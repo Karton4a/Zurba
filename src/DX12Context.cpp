@@ -11,7 +11,7 @@ void DX12Context::Init(HWND hwnd)
 void DX12Context::Update()
 {
 
-    DirectX::XMMATRIX model =  DirectX::XMMatrixTranslation(200,0,0) * DirectX::XMMatrixRotationZ(270);
+    DirectX::XMMATRIX model =  DirectX::XMMatrixTranslation(0,0,0) * DirectX::XMMatrixRotationZ(0);
     DirectX::XMMATRIX view = DirectX::XMMatrixIdentity();
     DirectX::XMMATRIX projection = DirectX::XMMatrixOrthographicLH(m_WindowSize.x, m_WindowSize.y, 0.0000001f,10000.0f);
     m_CBData.MVP = model * view * projection;
@@ -33,6 +33,42 @@ void DX12Context::Render()
     ThrowIfFailed(m_SwapChain->Present(1, 0));
 
     WaitForPreviousFrame();
+}
+
+std::vector<UINT8> DX12Context::GenerateTextureData()
+{
+    const UINT rowPitch = 256 * sizeof(UINT8) * 4;
+    const UINT cellPitch = rowPitch >> 3;        // The width of a cell in the checkboard texture.
+    const UINT cellHeight = 256 >> 3;    // The height of a cell in the checkerboard texture.
+    const UINT textureSize = rowPitch * 256;
+
+    std::vector<UINT8> data(textureSize);
+    UINT8* pData = &data[0];
+
+    for (UINT n = 0; n < textureSize; n += sizeof(UINT8) * 4)
+    {
+        UINT x = n % rowPitch;
+        UINT y = n / rowPitch;
+        UINT i = x / cellPitch;
+        UINT j = y / cellHeight;
+
+        if (i % 2 == j % 2)
+        {
+            pData[n] = 0x00;        // R
+            pData[n + 1] = 0x00;    // G
+            pData[n + 2] = 0x00;    // B
+            pData[n + 3] = 0xff;    // A
+        }
+        else
+        {
+            pData[n] = 0xff;        // R
+            pData[n + 1] = 0xff;    // G
+            pData[n + 2] = 0xff;    // B
+            pData[n + 3] = 0xff;    // A
+        }
+    }
+
+    return data;
 }
 
 void DX12Context::LoadPipeline()
@@ -189,11 +225,21 @@ void DX12Context::LoadPipeline()
     }
     {
         D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc = {};
-        cbvHeapDesc.NumDescriptors = 1;
+        cbvHeapDesc.NumDescriptors = 2;
         cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
         cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
         ThrowIfFailed(m_Device->CreateDescriptorHeap(
             &cbvHeapDesc, IID_PPV_ARGS(&m_CBVHeap)));
+
+    }
+
+    {
+        D3D12_DESCRIPTOR_HEAP_DESC samplerHeapDesc = {};
+        samplerHeapDesc.NumDescriptors = 1;
+        samplerHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+        samplerHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+        ThrowIfFailed(m_Device->CreateDescriptorHeap(
+            &samplerHeapDesc, IID_PPV_ARGS(&m_SamplerHeap)));
 
     }
 }
@@ -204,10 +250,10 @@ void DX12Context::LoadAssets()
     {
         D3D12_ROOT_SIGNATURE_DESC  rootSignatureDesc;
         rootSignatureDesc.NumParameters = 1;
-        D3D12_ROOT_PARAMETER rootParameter;
+        D3D12_ROOT_PARAMETER rootParameterCB;
 
-        rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-        rootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+        rootParameterCB.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        rootParameterCB.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
         D3D12_DESCRIPTOR_RANGE range;
         range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
@@ -216,15 +262,42 @@ void DX12Context::LoadAssets()
         range.RegisterSpace = 0;
         range.OffsetInDescriptorsFromTableStart = 0;
 
-        rootParameter.DescriptorTable.NumDescriptorRanges = 1;
-        rootParameter.DescriptorTable.pDescriptorRanges = &range;
+
+        D3D12_DESCRIPTOR_RANGE rangeTexture;
+        rangeTexture.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+        rangeTexture.NumDescriptors = 1;
+        rangeTexture.BaseShaderRegister = 0;
+        rangeTexture.RegisterSpace = 0;
+        rangeTexture.OffsetInDescriptorsFromTableStart = 1;
+
+        D3D12_DESCRIPTOR_RANGE ranges[] = { range, rangeTexture };
+
+        rootParameterCB.DescriptorTable.NumDescriptorRanges = 2;
+        rootParameterCB.DescriptorTable.pDescriptorRanges = ranges;
+
+        D3D12_ROOT_PARAMETER params[] = { rootParameterCB};
+
+        rootSignatureDesc.pParameters = params;
+
+        D3D12_STATIC_SAMPLER_DESC sampler = {};
+        sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+        sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+        sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+        sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+        sampler.MipLODBias = 0;
+        sampler.MaxAnisotropy = 0;
+        sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+        sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+        sampler.MinLOD = 0.0f;
+        sampler.MaxLOD = D3D12_FLOAT32_MAX;
+        sampler.ShaderRegister = 0;
+        sampler.RegisterSpace = 0;
+        sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 
-        rootSignatureDesc.pParameters = &rootParameter;
+        rootSignatureDesc.NumStaticSamplers = 1;
+        rootSignatureDesc.pStaticSamplers = &sampler;
 
-
-        rootSignatureDesc.NumStaticSamplers = 0;
-        rootSignatureDesc.pStaticSamplers = nullptr;
         rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
         Microsoft::WRL::ComPtr<ID3DBlob> signature;
@@ -266,7 +339,7 @@ void DX12Context::LoadAssets()
         D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
         {
             { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-            { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
         };
         D3D12_SHADER_BYTECODE vertexByteCode;
         vertexByteCode.pShaderBytecode = vertexShader->GetBufferPointer();
@@ -323,9 +396,13 @@ void DX12Context::LoadAssets()
         // Define the geometry for a triangle.
         Vertex triangleVertices[] =
         {
-            { { 0.0f, 300.0f , 1.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
-            { { 300.0f, -300.0f, 1.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } },
-            { { -300.0f, -300.0f, 1.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }
+            { { -300.0f, 300.0f , 1.0f }, { 0.0f,0.0f } },
+            { { 300.0f, 300.0f, 1.0f }, { 0.0f, 1.0f } },
+            { { 300.0f, -300.0f, 1.0f }, { 1.0f, 1.0f} },
+
+            { { 300.0f, -300.0f , 1.0f }, { 1.0f, 1.0f } },
+            { { -300.0f, -300.0f, 1.0f }, { 1.0f, 0.0f } },
+            { { -300.0f, 300.0f, 1.0f }, { 0.0f, 0.0f} }
         };
 
         const UINT vertexBufferSize = sizeof(triangleVertices);
@@ -429,6 +506,102 @@ void DX12Context::LoadAssets()
         ThrowIfFailed(m_ConstantBuffer->Map(0, &readRange, reinterpret_cast<void**>(&m_pCbvDataBegin)));
         memcpy(m_pCbvDataBegin, &m_CBData, sizeof(m_CBData));
     }
+    
+    Microsoft::WRL::ComPtr<ID3D12Resource> textureUploadHeap;
+
+    // Create the texture.
+    {
+        // Describe and create a Texture2D.
+        D3D12_RESOURCE_DESC textureDesc = {};
+        textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+        textureDesc.MipLevels = 1;
+        textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        textureDesc.Width = 256;
+        textureDesc.Height = 256;
+        textureDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+        textureDesc.DepthOrArraySize = 1;
+        textureDesc.SampleDesc.Count = 1;
+        textureDesc.SampleDesc.Quality = 0;
+
+
+        D3D12_HEAP_PROPERTIES heapProps;
+        heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+        heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+        heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+        heapProps.CreationNodeMask = 1;
+        heapProps.VisibleNodeMask = 1;
+
+        ThrowIfFailed(m_Device->CreateCommittedResource(
+            &heapProps,
+            D3D12_HEAP_FLAG_NONE,
+            &textureDesc,
+            D3D12_RESOURCE_STATE_COPY_DEST,
+            nullptr,
+            IID_PPV_ARGS(&m_Texture)));
+
+        const UINT64 uploadBufferSize = 256 * 256 * sizeof(UINT8) * 4;
+        
+        heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+
+        D3D12_RESOURCE_DESC uploadBufferResourceDesc;
+        uploadBufferResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        uploadBufferResourceDesc.Alignment = 0;
+        uploadBufferResourceDesc.Width = uploadBufferSize;
+        uploadBufferResourceDesc.Height = 1;
+        uploadBufferResourceDesc.DepthOrArraySize = 1;
+        uploadBufferResourceDesc.MipLevels = 1;
+        uploadBufferResourceDesc.Format = DXGI_FORMAT_UNKNOWN;
+        uploadBufferResourceDesc.SampleDesc.Count = 1;
+        uploadBufferResourceDesc.SampleDesc.Quality = 0;
+        uploadBufferResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        uploadBufferResourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+        // Create the GPU upload buffer.
+        ThrowIfFailed(m_Device->CreateCommittedResource(
+            &heapProps,
+            D3D12_HEAP_FLAG_NONE,
+            &uploadBufferResourceDesc,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            nullptr,
+            IID_PPV_ARGS(&textureUploadHeap)));
+
+        // Copy data to the intermediate upload heap and then schedule a copy 
+        // from the upload heap to the Texture2D.
+        std::vector<UINT8> texture = GenerateTextureData();
+
+        D3D12_SUBRESOURCE_DATA textureData = {};
+        textureData.pData = &texture[0];
+        textureData.RowPitch = 256 * 4 * sizeof(UINT8);
+        textureData.SlicePitch = textureData.RowPitch * 256;
+
+        //m_CommandList->CopyTextureRegion()
+        m_CommandList->CopyResource(m_Texture.Get(), textureUploadHeap.Get()); //?
+        //UpdateSubresources(m_CommandList.Get(), m_Texture.Get(), textureUploadHeap.Get(), 0, 0, 1, &textureData);
+
+
+        D3D12_RESOURCE_BARRIER barrier;
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        barrier.Transition.pResource = m_Texture.Get();
+        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+
+        m_CommandList->ResourceBarrier(1, &barrier);
+
+        // Describe and create a SRV for the texture.
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srvDesc.Format = textureDesc.Format;
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Texture2D.MipLevels = 1;
+
+        D3D12_CPU_DESCRIPTOR_HANDLE handle(m_CBVHeap->GetCPUDescriptorHandleForHeapStart());
+        UINT descriptorRecordSize = m_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        handle.ptr += descriptorRecordSize;
+
+        m_Device->CreateShaderResourceView(m_Texture.Get(), &srvDesc, handle);
+    }
 
 
     // Create synchronization objects and wait until assets have been uploaded to the GPU.
@@ -505,7 +678,7 @@ void DX12Context::WriteCommandList()
 
 
 
-    ID3D12DescriptorHeap* ppHeaps[] = { m_CBVHeap.Get() };
+    ID3D12DescriptorHeap* ppHeaps[] = { m_CBVHeap.Get(), m_SamplerHeap.Get()};
     m_CommandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 
     m_CommandList->SetGraphicsRootDescriptorTable(0, m_CBVHeap->GetGPUDescriptorHandleForHeapStart());
@@ -534,7 +707,7 @@ void DX12Context::WriteCommandList()
     
     m_CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     m_CommandList->IASetVertexBuffers(0, 1, &m_VertexBufferView);
-    m_CommandList->DrawInstanced(3, 1, 0, 0);
+    m_CommandList->DrawInstanced(6, 1, 0, 0);
 
     // Indicate that the back buffer will now be used to present.
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;

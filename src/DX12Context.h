@@ -7,6 +7,8 @@
 #include <array>
 #include <directxmath.h>
 
+#include <vector>
+
 class DX12Context
 {
 public:
@@ -24,6 +26,7 @@ public:
 	void Update();
 	void Render();
 	void Destroy();
+	std::vector<UINT8> GenerateTextureData();
 private:
 	void LoadPipeline();
 	void LoadAssets();
@@ -33,7 +36,7 @@ private:
 	struct Vertex
 	{
 		DirectX::XMFLOAT3 position;
-		DirectX::XMFLOAT4 color;
+		DirectX::XMFLOAT2 uv;
 	};
 	struct __declspec(align(256)) Constants
 	{
@@ -44,14 +47,20 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_CommandAllocator;
 	Microsoft::WRL::ComPtr<IDXGISwapChain3> m_SwapChain;
 	Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_CommandQueue;
+
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_RTVHeap;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_CBVHeap;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_SamplerHeap;
+
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_CommandList;
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_RootSignature;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_PipelineState;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_VertexBuffer;
 	D3D12_VERTEX_BUFFER_VIEW m_VertexBufferView;
+
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_ConstantBuffer;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_Texture;
+
 	Constants m_CBData;
 	UINT8* m_pCbvDataBegin;
 	UINT m_RTVDescriptorSize;
