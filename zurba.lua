@@ -13,6 +13,7 @@ project(PROJECT_NAME)
    kind "WindowedApp"
    language "C++"
    targetdir "bin/%{cfg.buildcfg}"
+   cppdialect "C++20"
 
    links {"d3d12.lib", "dxgi.lib", "d3dcompiler.lib"}
 
