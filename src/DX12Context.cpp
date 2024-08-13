@@ -10,13 +10,21 @@ void DX12Context::Init(HWND hwnd)
 
 void DX12Context::Update()
 {
+    DirectX::XMVECTOR movementDirection = DirectX::XMLoadFloat3(&m_CameraMovementDirection);
+    m_CameraMovementPosition = DirectX::XMVectorAdd(m_CameraMovementPosition, movementDirection);
+    m_CameraMovementDirection = DirectX::XMFLOAT3(0,0,0);
 
     DirectX::XMMATRIX model =  DirectX::XMMatrixTranslation(0,0,0) * DirectX::XMMatrixRotationZ(0);
-    DirectX::XMMATRIX view = DirectX::XMMatrixIdentity();
-    DirectX::XMMATRIX projection = DirectX::XMMatrixOrthographicLH(m_WindowSize.x, m_WindowSize.y, 0.0000001f,10000.0f);
+
+    DirectX::XMVECTOR focusPosition = DirectX::XMVectorAdd(m_CameraMovementPosition, DirectX::XMVectorSet(0, 0, 1, 0));
+
+    DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH(m_CameraMovementPosition, focusPosition, DirectX::XMVectorSet(0, 1 , 0 , 0));
+
+    DirectX::XMMATRIX projection = DirectX::XMMatrixPerspectiveFovLH(DirectX::XMConvertToRadians(30), (float)m_WindowSize.x / m_WindowSize.y, 0.0000001f, 10000.0f);
     m_CBData.MVP = model * view * projection;
 
     memcpy(m_pCbvDataBegin, &m_CBData, sizeof(m_CBData));
+
 
 }
 
@@ -33,6 +41,37 @@ void DX12Context::Render()
     ThrowIfFailed(m_SwapChain->Present(1, 0));
 
     WaitForPreviousFrame();
+}
+
+void DX12Context::OnKeyUp(UINT8 key)
+{
+}
+
+void DX12Context::OnKeyDown(UINT8 key)
+{
+    switch (key)
+    {
+    case 0x57: // w key
+        m_CameraMovementDirection.z += m_CameraSpeed;
+        break;
+    case 0x53: // s key
+        m_CameraMovementDirection.z -= m_CameraSpeed;
+        break;
+    case 0x44: // d key
+        m_CameraMovementDirection.x += m_CameraSpeed;
+        break;
+    case 0x41: //a key
+        m_CameraMovementDirection.x -= m_CameraSpeed;
+        break;
+    case VK_SPACE: 
+        m_CameraMovementDirection.y += m_CameraSpeed;
+        break;
+    case VK_CONTROL:
+        m_CameraMovementDirection.y -= m_CameraSpeed;
+        break;
+    default:
+        break;
+    }
 }
 
 std::vector<UINT8> DX12Context::GenerateTextureData()

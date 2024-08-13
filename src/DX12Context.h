@@ -26,6 +26,8 @@ public:
 	void Update();
 	void Render();
 	void Destroy();
+	void OnKeyUp(UINT8 key);
+	void OnKeyDown(UINT8 key);
 	std::vector<UINT8> GenerateTextureData();
 private:
 	void LoadPipeline();
@@ -102,6 +104,11 @@ private:
 	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, 2> m_RenderTargets;
 	HWND m_WindowHandler;
 	DirectX::XMUINT2 m_WindowSize;
+
+	DirectX::XMFLOAT3 m_CameraMovementDirection = DirectX::XMFLOAT3(0,0,0);
+	DirectX::XMVECTOR m_CameraMovementPosition = DirectX::XMVectorSet(0,0,0,0);
+	float m_CameraSpeed = 10.0f;
+
 };
 
 template<UINT MaxSubresources>

@@ -90,6 +90,20 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         isRunning = false;
         return 0;
 
+    case WM_KEYDOWN:
+        if (ctx)
+        {
+            ctx->OnKeyDown(static_cast<UINT8>(wParam));
+        }
+        return 0;
+
+    case WM_KEYUP:
+        if (ctx)
+        {
+            ctx->OnKeyUp(static_cast<UINT8>(wParam));
+        }
+        return 0;
+
     case WM_PAINT:
     {
         if (ctx)
