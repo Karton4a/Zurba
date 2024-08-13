@@ -167,7 +167,7 @@ void DX12Context::LoadPipeline()
 
     //COMMAND LIST
     ThrowIfFailed(m_Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_CommandAllocator.Get(), nullptr, IID_PPV_ARGS(&m_CommandList)));
-    ThrowIfFailed(m_CommandList->Close());
+    //ThrowIfFailed(m_CommandList->Close());
 
     D3D12_VIEWPORT viewport;
     D3D12_RECT surfaceSize;
@@ -575,8 +575,10 @@ void DX12Context::LoadAssets()
         textureData.SlicePitch = textureData.RowPitch * 256;
 
         //m_CommandList->CopyTextureRegion()
-        m_CommandList->CopyResource(m_Texture.Get(), textureUploadHeap.Get()); //?
-        //UpdateSubresources(m_CommandList.Get(), m_Texture.Get(), textureUploadHeap.Get(), 0, 0, 1, &textureData);
+        //m_CommandList->CopyResource(m_Texture.Get(), textureUploadHeap.Get()); //?
+       // m_CommandList->Copy
+        UpdateSubresources<5>(m_CommandList.Get(), m_Texture.Get(), textureUploadHeap.Get(), 0, 0, 1, &textureData);
+
 
 
         D3D12_RESOURCE_BARRIER barrier;
@@ -603,6 +605,10 @@ void DX12Context::LoadAssets()
         m_Device->CreateShaderResourceView(m_Texture.Get(), &srvDesc, handle);
     }
 
+    ThrowIfFailed(m_CommandList->Close());
+    // Execute the command list.
+    ID3D12CommandList* ppCommandLists[] = { m_CommandList.Get() };
+    m_CommandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
     // Create synchronization objects and wait until assets have been uploaded to the GPU.
     {
@@ -678,7 +684,7 @@ void DX12Context::WriteCommandList()
 
 
 
-    ID3D12DescriptorHeap* ppHeaps[] = { m_CBVHeap.Get(), m_SamplerHeap.Get()};
+    ID3D12DescriptorHeap* ppHeaps[] = { m_CBVHeap.Get()};
     m_CommandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 
     m_CommandList->SetGraphicsRootDescriptorTable(0, m_CBVHeap->GetGPUDescriptorHandleForHeapStart());
@@ -719,4 +725,82 @@ void DX12Context::WriteCommandList()
     m_CommandList->ResourceBarrier(1, &barrier);
 
     ThrowIfFailed(m_CommandList->Close());
+}
+
+UINT64 DX12Context::UpdateSubresources(ID3D12GraphicsCommandList* pCmdList, ID3D12Resource* pDestinationResource, ID3D12Resource* pIntermediate, UINT FirstSubresource, UINT NumSubresources, UINT64 RequiredSize, const D3D12_PLACED_SUBRESOURCE_FOOTPRINT* pLayouts, const UINT* pNumRows, const UINT64* pRowSizesInBytes, const D3D12_SUBRESOURCE_DATA* pSrcData) noexcept
+{
+    // Minor validation
+#if defined(_MSC_VER) || !defined(_WIN32)
+    const auto IntermediateDesc = pIntermediate->GetDesc();
+    const auto DestinationDesc = pDestinationResource->GetDesc();
+#else
+    D3D12_RESOURCE_DESC tmpDesc1, tmpDesc2;
+    const auto& IntermediateDesc = *pIntermediate->GetDesc(&tmpDesc1);
+    const auto& DestinationDesc = *pDestinationResource->GetDesc(&tmpDesc2);
+#endif
+    if (IntermediateDesc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER ||
+        IntermediateDesc.Width < RequiredSize + pLayouts[0].Offset ||
+        RequiredSize > SIZE_T(-1) ||
+        (DestinationDesc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER &&
+            (FirstSubresource != 0 || NumSubresources != 1)))
+    {
+        return 0;
+    }
+
+    BYTE* pData;
+    HRESULT hr = pIntermediate->Map(0, nullptr, reinterpret_cast<void**>(&pData));
+    if (FAILED(hr))
+    {
+        return 0;
+    }
+
+    for (UINT i = 0; i < NumSubresources; ++i)
+    {
+        if (pRowSizesInBytes[i] > SIZE_T(-1)) return 0;
+        D3D12_MEMCPY_DEST DestData = { pData + pLayouts[i].Offset, pLayouts[i].Footprint.RowPitch, SIZE_T(pLayouts[i].Footprint.RowPitch) * SIZE_T(pNumRows[i]) };
+        MemcpySubresource(&DestData, &pSrcData[i], static_cast<SIZE_T>(pRowSizesInBytes[i]), pNumRows[i], pLayouts[i].Footprint.Depth);
+    }
+    pIntermediate->Unmap(0, nullptr);
+
+    if (DestinationDesc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
+    {
+        pCmdList->CopyBufferRegion(
+            pDestinationResource, 0, pIntermediate, pLayouts[0].Offset, pLayouts[0].Footprint.Width);
+    }
+    else
+    {
+        for (UINT i = 0; i < NumSubresources; ++i)
+        {
+            
+            D3D12_TEXTURE_COPY_LOCATION Dst;
+            Dst.pResource = pDestinationResource;
+            Dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+            Dst.PlacedFootprint = {};
+            Dst.SubresourceIndex = i + FirstSubresource;
+
+            D3D12_TEXTURE_COPY_LOCATION Src;
+
+            Src.pResource = pIntermediate;
+            Src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+            Src.PlacedFootprint = pLayouts[i];
+
+            pCmdList->CopyTextureRegion(&Dst, 0, 0, 0, &Src, nullptr);
+        }
+    }
+    return RequiredSize;
+}
+
+void DX12Context::MemcpySubresource(const D3D12_MEMCPY_DEST* pDest, const D3D12_SUBRESOURCE_DATA* pSrc, SIZE_T RowSizeInBytes, UINT NumRows, UINT NumSlices) noexcept
+{
+    for (UINT z = 0; z < NumSlices; ++z)
+    {
+        auto pDestSlice = static_cast<BYTE*>(pDest->pData) + pDest->SlicePitch * z;
+        auto pSrcSlice = static_cast<const BYTE*>(pSrc->pData) + pSrc->SlicePitch * LONG_PTR(z);
+        for (UINT y = 0; y < NumRows; ++y)
+        {
+            memcpy(pDestSlice + pDest->RowPitch * y,
+                pSrcSlice + pSrc->RowPitch * LONG_PTR(y),
+                RowSizeInBytes);
+        }
+    }
 }

@@ -32,6 +32,35 @@ private:
 	void LoadAssets();
 	void WaitForPreviousFrame();
 	void WriteCommandList();
+	template <UINT MaxSubresources>
+	UINT64 UpdateSubresources(
+		ID3D12GraphicsCommandList* pCmdList, 
+		ID3D12Resource* pDestinationResource, 
+		ID3D12Resource* pIntermediate,
+		UINT64 IntermediateOffset, 
+		UINT FirstSubresource, 
+		UINT NumSubresources, 
+		const D3D12_SUBRESOURCE_DATA* pSrcData) noexcept;
+
+	UINT64 UpdateSubresources(
+		ID3D12GraphicsCommandList* pCmdList,
+		ID3D12Resource* pDestinationResource,
+		ID3D12Resource* pIntermediate,
+		UINT FirstSubresource,
+		UINT NumSubresources,
+		UINT64 RequiredSize,
+		const D3D12_PLACED_SUBRESOURCE_FOOTPRINT* pLayouts,
+		const UINT* pNumRows,
+		const UINT64* pRowSizesInBytes,
+		const D3D12_SUBRESOURCE_DATA* pSrcData) noexcept;
+
+	void MemcpySubresource(
+		const D3D12_MEMCPY_DEST* pDest,
+		const D3D12_SUBRESOURCE_DATA* pSrc,
+		SIZE_T RowSizeInBytes,
+		UINT NumRows,
+		UINT NumSlices) noexcept;
+
 private:
 	struct Vertex
 	{
@@ -75,3 +104,24 @@ private:
 	DirectX::XMUINT2 m_WindowSize;
 };
 
+template<UINT MaxSubresources>
+inline UINT64 DX12Context::UpdateSubresources(ID3D12GraphicsCommandList* pCmdList, ID3D12Resource* pDestinationResource, ID3D12Resource* pIntermediate, UINT64 IntermediateOffset, UINT FirstSubresource, UINT NumSubresources, const D3D12_SUBRESOURCE_DATA* pSrcData) noexcept
+{
+	UINT64 RequiredSize = 0;
+	D3D12_PLACED_SUBRESOURCE_FOOTPRINT Layouts[MaxSubresources];
+	UINT NumRows[MaxSubresources];
+	UINT64 RowSizesInBytes[MaxSubresources];
+
+#if defined(_MSC_VER) || !defined(_WIN32)
+	const auto Desc = pDestinationResource->GetDesc();
+#else
+	D3D12_RESOURCE_DESC tmpDesc;
+	const auto& Desc = *pDestinationResource->GetDesc(&tmpDesc);
+#endif
+	ID3D12Device* pDevice = nullptr;
+	pDestinationResource->GetDevice(__uuidof(*pDevice), reinterpret_cast<void**>(&pDevice));
+	pDevice->GetCopyableFootprints(&Desc, FirstSubresource, NumSubresources, IntermediateOffset, Layouts, NumRows, RowSizesInBytes, &RequiredSize);
+	pDevice->Release();
+
+	return UpdateSubresources(pCmdList, pDestinationResource, pIntermediate, FirstSubresource, NumSubresources, RequiredSize, Layouts, NumRows, RowSizesInBytes, pSrcData);
+}
