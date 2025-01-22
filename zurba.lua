@@ -17,7 +17,7 @@ project(PROJECT_NAME)
 
    links {"d3d12.lib", "dxgi.lib", "d3dcompiler.lib"}
 
-   files { "src/**.h", "src/**.cpp" }
+   files { "src/**.h", "src/**.cpp", "external/**.h" }
    
 
    filter { "configurations:Debug" }
