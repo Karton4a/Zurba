@@ -15,6 +15,8 @@ project(PROJECT_NAME)
    targetdir "bin/%{cfg.buildcfg}"
    cppdialect "C++20"
 
+   includedirs { "external" }
+
    links {"d3d12.lib", "dxgi.lib", "d3dcompiler.lib"}
 
    files { "src/**.h", "src/**.cpp", "external/**.h" }
