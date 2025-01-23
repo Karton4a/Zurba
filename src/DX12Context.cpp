@@ -1,6 +1,10 @@
 #include "DX12Context.h"
 #include "DXHelpers.h"
 #include "d3dcompiler.h"
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 void DX12Context::Init(HWND hwnd)
 {
     m_WindowHandler = hwnd;
@@ -119,7 +123,14 @@ void DX12Context::LoadPipeline()
     Microsoft::WRL::ComPtr<ID3D12Debug> debugInterface;
     ThrowIfFailed(D3D12GetDebugInterface(IID_PPV_ARGS(&debugInterface)));
     debugInterface->EnableDebugLayer();
+
+   /* Microsoft::WRL::ComPtr<ID3D12Debug> spDebugController0;
+    Microsoft::WRL::ComPtr<ID3D12Debug1> spDebugController1;
+    (D3D12GetDebugInterface(IID_PPV_ARGS(&spDebugController0)));
+    (spDebugController0->QueryInterface(IID_PPV_ARGS(&spDebugController1)));
+    spDebugController1->SetEnableGPUBasedValidation(true);*/
 #endif
+
 
     Microsoft::WRL::ComPtr<IDXGIFactory4> dxgiFactory;
     UINT createFactoryFlags = 0;
@@ -550,13 +561,21 @@ void DX12Context::LoadAssets()
 
     // Create the texture.
     {
+        int x, y, n;
+        stbi_uc* data = stbi_load("./data/images/Flag.png", &x, &y, &n, 0);
+        /*for (size_t i = 0; i < x*y*n; i++)
+        {
+            stbi_uc value = data[i];
+            OutputDebugString(value == 0 ? L"1" : L"0");
+        }*/
+
         // Describe and create a Texture2D.
         D3D12_RESOURCE_DESC textureDesc = {};
         textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
         textureDesc.MipLevels = 1;
         textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-        textureDesc.Width = 256;
-        textureDesc.Height = 256;
+        textureDesc.Width = x;
+        textureDesc.Height = y;
         textureDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
         textureDesc.DepthOrArraySize = 1;
         textureDesc.SampleDesc.Count = 1;
@@ -578,7 +597,8 @@ void DX12Context::LoadAssets()
             nullptr,
             IID_PPV_ARGS(&m_Texture)));
 
-        const UINT64 uploadBufferSize = 256 * 256 * sizeof(UINT8) * 4;
+        //GetRequiredIntermediateSize 
+        const UINT64 uploadBufferSize = x * y * sizeof(UINT8) * n + 100000;
         
         heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
 
@@ -606,18 +626,24 @@ void DX12Context::LoadAssets()
 
         // Copy data to the intermediate upload heap and then schedule a copy 
         // from the upload heap to the Texture2D.
-        std::vector<UINT8> texture = GenerateTextureData();
+
+        //std::vector<UINT8> texture = GenerateTextureData();
 
         D3D12_SUBRESOURCE_DATA textureData = {};
-        textureData.pData = &texture[0];
-        textureData.RowPitch = 256 * 4 * sizeof(UINT8);
-        textureData.SlicePitch = textureData.RowPitch * 256;
+        textureData.pData = data;
+        textureData.RowPitch = x * n * sizeof(stbi_uc);
+        textureData.SlicePitch = textureData.RowPitch * y;
 
         //m_CommandList->CopyTextureRegion()
         //m_CommandList->CopyResource(m_Texture.Get(), textureUploadHeap.Get()); //?
        // m_CommandList->Copy
-        UpdateSubresources<5>(m_CommandList.Get(), m_Texture.Get(), textureUploadHeap.Get(), 0, 0, 1, &textureData);
+        UINT64 res =  UpdateSubresources<5>(m_CommandList.Get(), m_Texture.Get(), textureUploadHeap.Get(), 0, 0, 1, &textureData);
+        if (res == 0)
+        {
+            OutputDebugString(L"UpdateSubresource error\n");
+        }
 
+        stbi_image_free(data);
 
 
         D3D12_RESOURCE_BARRIER barrier;
@@ -746,7 +772,7 @@ void DX12Context::WriteCommandList()
     m_CommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
     // Record commands.
-    const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
+    const float clearColor[] = { 1.0f, 0.0f, 1.0f, 1.0f };
     m_CommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 
     
