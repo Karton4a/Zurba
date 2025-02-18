@@ -1,7 +1,8 @@
 #include "Application.h"
 #include "DXHelpers.h"
 #include "d3dcompiler.h"
-
+#define FAST_OBJ_IMPLEMENTATION
+#include "fast_obj.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
@@ -448,6 +449,11 @@ void Application::LoadAssets()
         ThrowIfFailed(m_Device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_PipelineState)));
     }
 
+    {
+        fastObjMesh* mesh =  fast_obj_read("./data/Sponza/sponza.obj");
+
+        fast_obj_destroy(mesh);
+    }
 
     // Create the vertex buffer.
     {
