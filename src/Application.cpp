@@ -1,11 +1,11 @@
-#include "DX12Context.h"
+#include "Application.h"
 #include "DXHelpers.h"
 #include "d3dcompiler.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-void DX12Context::Init(HWND hwnd)
+void Application::Init(HWND hwnd)
 {
     for (int i = 0; i < 255; i++)
     {
@@ -16,7 +16,7 @@ void DX12Context::Init(HWND hwnd)
 	LoadAssets();
 }
 
-void DX12Context::Update()
+void Application::Update()
 {
     m_CameraMovementDirection = DirectX::XMFLOAT3(0,0,0);
     if (IsKeyPressed('W')) 
@@ -61,7 +61,7 @@ void DX12Context::Update()
 
 }
 
-void DX12Context::Render()
+void Application::Render()
 {
     // Record all the commands we need to render the scene into the command list.
     WriteCommandList();
@@ -76,17 +76,17 @@ void DX12Context::Render()
     WaitForPreviousFrame();
 }
 
-void DX12Context::OnKeyUp(UINT8 key)
+void Application::OnKeyUp(UINT8 key)
 {
     m_InputTable[key] = false;
 }
 
-void DX12Context::OnKeyDown(UINT8 key)
+void Application::OnKeyDown(UINT8 key)
 {
     m_InputTable[key] = true;
 }
 
-std::vector<UINT8> DX12Context::GenerateTextureData()
+std::vector<UINT8> Application::GenerateTextureData()
 {
     const UINT rowPitch = 256 * sizeof(UINT8) * 4;
     const UINT cellPitch = rowPitch >> 3;        // The width of a cell in the checkboard texture.
@@ -122,7 +122,7 @@ std::vector<UINT8> DX12Context::GenerateTextureData()
     return data;
 }
 
-void DX12Context::LoadPipeline()
+void Application::LoadPipeline()
 {
 #if defined(_DEBUG)
     // Always enable the debug layer before doing anything DX12 related
@@ -302,7 +302,7 @@ void DX12Context::LoadPipeline()
     }
 }
 
-void DX12Context::LoadAssets()
+void Application::LoadAssets()
 {
     
     {
@@ -703,7 +703,7 @@ void DX12Context::LoadAssets()
 
 }
 
-void DX12Context::WaitForPreviousFrame()
+void Application::WaitForPreviousFrame()
 {
     // WAITING FOR THE FRAME TO COMPLETE BEFORE CONTINUING IS NOT BEST PRACTICE.
    // This is code implemented as such for simplicity. The D3D12HelloFrameBuffering
@@ -725,7 +725,7 @@ void DX12Context::WaitForPreviousFrame()
     m_FrameIndex = m_SwapChain->GetCurrentBackBufferIndex();
 }
 
-void DX12Context::WriteCommandList()
+void Application::WriteCommandList()
 {
     // Command list allocators can only be reset when the associated 
    // command lists have finished execution on the GPU; apps should use 
@@ -800,7 +800,7 @@ void DX12Context::WriteCommandList()
     ThrowIfFailed(m_CommandList->Close());
 }
 
-UINT64 DX12Context::UpdateSubresources(ID3D12GraphicsCommandList* pCmdList, ID3D12Resource* pDestinationResource, ID3D12Resource* pIntermediate, UINT FirstSubresource, UINT NumSubresources, UINT64 RequiredSize, const D3D12_PLACED_SUBRESOURCE_FOOTPRINT* pLayouts, const UINT* pNumRows, const UINT64* pRowSizesInBytes, const D3D12_SUBRESOURCE_DATA* pSrcData) noexcept
+UINT64 Application::UpdateSubresources(ID3D12GraphicsCommandList* pCmdList, ID3D12Resource* pDestinationResource, ID3D12Resource* pIntermediate, UINT FirstSubresource, UINT NumSubresources, UINT64 RequiredSize, const D3D12_PLACED_SUBRESOURCE_FOOTPRINT* pLayouts, const UINT* pNumRows, const UINT64* pRowSizesInBytes, const D3D12_SUBRESOURCE_DATA* pSrcData) noexcept
 {
     // Minor validation
 #if defined(_MSC_VER) || !defined(_WIN32)
@@ -863,7 +863,7 @@ UINT64 DX12Context::UpdateSubresources(ID3D12GraphicsCommandList* pCmdList, ID3D
     return RequiredSize;
 }
 
-void DX12Context::MemcpySubresource(const D3D12_MEMCPY_DEST* pDest, const D3D12_SUBRESOURCE_DATA* pSrc, SIZE_T RowSizeInBytes, UINT NumRows, UINT NumSlices) noexcept
+void Application::MemcpySubresource(const D3D12_MEMCPY_DEST* pDest, const D3D12_SUBRESOURCE_DATA* pSrc, SIZE_T RowSizeInBytes, UINT NumRows, UINT NumSlices) noexcept
 {
     for (UINT z = 0; z < NumSlices; ++z)
     {

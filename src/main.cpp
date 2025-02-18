@@ -7,7 +7,8 @@
 #include <wrl.h>
 #include <d3d12.h>
 #include <dxgi1_6.h>
-#include "DX12Context.h"
+#include "Application.h"
+
 static bool isRunning = true;
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -29,7 +30,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     // Create the window.
     unsigned width = 1920;
     unsigned height = 1080;
-    DX12Context* context = new DX12Context{ width, height};
+    Application* context = new Application{ width, height};
     HWND hwnd = CreateWindowEx(
         0,                              // Optional window styles.
         CLASS_NAME,                     // Window class
@@ -75,7 +76,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    DX12Context* ctx = reinterpret_cast<DX12Context*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+    Application* ctx = reinterpret_cast<Application*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
 
     switch (uMsg)
     {
