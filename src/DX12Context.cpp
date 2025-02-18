@@ -19,19 +19,19 @@ void DX12Context::Init(HWND hwnd)
 void DX12Context::Update()
 {
     m_CameraMovementDirection = DirectX::XMFLOAT3(0,0,0);
-    if (IsKeyPressed(0x57)) // w key
+    if (IsKeyPressed('W')) 
     {
         m_CameraMovementDirection.z += m_CameraSpeed;
     }
-    if (IsKeyPressed(0x53)) // s key
+    if (IsKeyPressed('S'))
     {
         m_CameraMovementDirection.z -= m_CameraSpeed;
     }
-    if (IsKeyPressed(0x44)) // d key
+    if (IsKeyPressed('D'))
     {
         m_CameraMovementDirection.x += m_CameraSpeed;
     }
-    if (IsKeyPressed(0x41)) // a key
+    if (IsKeyPressed('A'))
     {
         m_CameraMovementDirection.x -= m_CameraSpeed;
     }
