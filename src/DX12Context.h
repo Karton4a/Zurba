@@ -28,6 +28,7 @@ public:
 	void Destroy();
 	void OnKeyUp(UINT8 key);
 	void OnKeyDown(UINT8 key);
+	inline bool IsKeyPressed(UINT8 key) const { return m_InputTable[key]; };
 	std::vector<UINT8> GenerateTextureData();
 private:
 	void LoadPipeline();
@@ -106,9 +107,9 @@ private:
 	DirectX::XMUINT2 m_WindowSize;
 
 	DirectX::XMFLOAT3 m_CameraMovementDirection = DirectX::XMFLOAT3(0,0,0);
-	DirectX::XMVECTOR m_CameraMovementPosition = DirectX::XMVectorSet(0,0,0,0);
+	DirectX::XMVECTOR m_CameraMovementPosition = DirectX::XMVectorSet(0,0,-1300,0);
 	float m_CameraSpeed = 10.0f;
-
+	bool m_InputTable[256];
 };
 
 template<UINT MaxSubresources>

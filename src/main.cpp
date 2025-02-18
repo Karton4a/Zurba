@@ -29,7 +29,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     // Create the window.
     unsigned width = 1920;
     unsigned height = 1080;
-
     DX12Context* context = new DX12Context{ width, height};
     HWND hwnd = CreateWindowEx(
         0,                              // Optional window styles.
@@ -61,11 +60,13 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     MSG msg = { };
     while (isRunning)
     {
-        if (PeekMessage(&msg, NULL, 0, 0,PM_REMOVE) )
+        while (PeekMessage(&msg, NULL, 0, 0,PM_REMOVE) )
         {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
+        context->Update();
+        context->Render();
     }
     
     delete context;
@@ -103,17 +104,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             ctx->OnKeyUp(static_cast<UINT8>(wParam));
         }
         return 0;
-
-    case WM_PAINT:
-    {
-        if (ctx)
-        {
-            ctx->Update();
-            ctx->Render();
-        }
-    }
-    return 0;
-
     }
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }

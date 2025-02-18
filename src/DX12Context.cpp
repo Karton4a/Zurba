@@ -7,6 +7,10 @@
 
 void DX12Context::Init(HWND hwnd)
 {
+    for (int i = 0; i < 255; i++)
+    {
+        m_InputTable[i] = false;
+    }
     m_WindowHandler = hwnd;
 	LoadPipeline();
 	LoadAssets();
@@ -14,9 +18,34 @@ void DX12Context::Init(HWND hwnd)
 
 void DX12Context::Update()
 {
+    m_CameraMovementDirection = DirectX::XMFLOAT3(0,0,0);
+    if (IsKeyPressed(0x57)) // w key
+    {
+        m_CameraMovementDirection.z += m_CameraSpeed;
+    }
+    if (IsKeyPressed(0x53)) // s key
+    {
+        m_CameraMovementDirection.z -= m_CameraSpeed;
+    }
+    if (IsKeyPressed(0x44)) // d key
+    {
+        m_CameraMovementDirection.x += m_CameraSpeed;
+    }
+    if (IsKeyPressed(0x41)) // a key
+    {
+        m_CameraMovementDirection.x -= m_CameraSpeed;
+    }
+    if (IsKeyPressed(VK_SPACE))
+    {
+        m_CameraMovementDirection.y += m_CameraSpeed;
+    }
+    if (IsKeyPressed(VK_CONTROL))
+    {
+        m_CameraMovementDirection.y -= m_CameraSpeed;
+    }
+
     DirectX::XMVECTOR movementDirection = DirectX::XMLoadFloat3(&m_CameraMovementDirection);
     m_CameraMovementPosition = DirectX::XMVectorAdd(m_CameraMovementPosition, movementDirection);
-    m_CameraMovementDirection = DirectX::XMFLOAT3(0,0,0);
 
     DirectX::XMMATRIX model =  DirectX::XMMatrixTranslation(0,0,0) * DirectX::XMMatrixRotationZ(0);
 
@@ -49,33 +78,12 @@ void DX12Context::Render()
 
 void DX12Context::OnKeyUp(UINT8 key)
 {
+    m_InputTable[key] = false;
 }
 
 void DX12Context::OnKeyDown(UINT8 key)
 {
-    switch (key)
-    {
-    case 0x57: // w key
-        m_CameraMovementDirection.z += m_CameraSpeed;
-        break;
-    case 0x53: // s key
-        m_CameraMovementDirection.z -= m_CameraSpeed;
-        break;
-    case 0x44: // d key
-        m_CameraMovementDirection.x += m_CameraSpeed;
-        break;
-    case 0x41: //a key
-        m_CameraMovementDirection.x -= m_CameraSpeed;
-        break;
-    case VK_SPACE: 
-        m_CameraMovementDirection.y += m_CameraSpeed;
-        break;
-    case VK_CONTROL:
-        m_CameraMovementDirection.y -= m_CameraSpeed;
-        break;
-    default:
-        break;
-    }
+    m_InputTable[key] = true;
 }
 
 std::vector<UINT8> DX12Context::GenerateTextureData()
