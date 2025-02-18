@@ -9,10 +9,10 @@
 
 #include <vector>
 
-class DX12Context
+class Application
 {
 public:
-	DX12Context(UINT32 width, UINT32 height)
+	Application(UINT32 width, UINT32 height)
 		:m_WindowHandler(0), 
 		m_WindowSize(width, height),
 		m_FrameIndex(0), 
@@ -113,7 +113,7 @@ private:
 };
 
 template<UINT MaxSubresources>
-inline UINT64 DX12Context::UpdateSubresources(ID3D12GraphicsCommandList* pCmdList, ID3D12Resource* pDestinationResource, ID3D12Resource* pIntermediate, UINT64 IntermediateOffset, UINT FirstSubresource, UINT NumSubresources, const D3D12_SUBRESOURCE_DATA* pSrcData) noexcept
+inline UINT64 Application::UpdateSubresources(ID3D12GraphicsCommandList* pCmdList, ID3D12Resource* pDestinationResource, ID3D12Resource* pIntermediate, UINT64 IntermediateOffset, UINT FirstSubresource, UINT NumSubresources, const D3D12_SUBRESOURCE_DATA* pSrcData) noexcept
 {
 	UINT64 RequiredSize = 0;
 	D3D12_PLACED_SUBRESOURCE_FOOTPRINT Layouts[MaxSubresources];
