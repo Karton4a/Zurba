@@ -5,9 +5,16 @@
 #include "fast_obj.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#include "DX12DeviceManager.h"
+
+Application::~Application()
+{
+    DX12DeviceManager::Free();
+}
 
 void Application::Init(HWND hwnd)
 {
+    DX12DeviceManager::Initialize();
     for (int i = 0; i < 255; i++)
     {
         m_InputTable[i] = false;
@@ -175,7 +182,7 @@ void Application::LoadPipeline()
 
     //DEVICE
     ThrowIfFailed(D3D12CreateDevice(dxgiAdapter4.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&m_Device)));
-
+    DX12DeviceManager::GetInstance()->SetDevice(m_Device);
 
 #if defined(_DEBUG)
     Microsoft::WRL::ComPtr<ID3D12InfoQueue> pInfoQueue;
@@ -451,6 +458,24 @@ void Application::LoadAssets()
 
     {
         fastObjMesh* mesh =  fast_obj_read("./data/Sponza/sponza.obj");
+        struct Vertex
+        {
+            DirectX::XMFLOAT3 position;
+            DirectX::XMFLOAT3 normals;
+            DirectX::XMFLOAT2 uv;
+        };
+
+        Vertex* vertices = nullptr;
+        vertices = new Vertex[mesh->index_count];
+        for (size_t i = 0; i < mesh->index_count; i++)
+        {
+            fastObjIndex index = mesh->indices[i];
+            Vertex& vertex = vertices[i];
+            vertex.position = DirectX::XMFLOAT3(mesh->positions + index.p);
+            vertex.normals = DirectX::XMFLOAT3(mesh->positions + index.n);
+            vertex.uv = DirectX::XMFLOAT2(mesh->texcoords + index.t);
+        }
+        delete[] vertices;
         fast_obj_destroy(mesh);
     }
 
@@ -469,53 +494,56 @@ void Application::LoadAssets()
         };
 
         const UINT vertexBufferSize = sizeof(triangleVertices);
+        //auto t = new DX12Buffer((void*)triangleVertices, vertexBufferSize);
+        m_DX12VertexBuffer = std::make_shared<DX12Buffer>(triangleVertices, vertexBufferSize);
+        //D3D12_HEAP_PROPERTIES heapProps;
+        //heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+        //heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+        //heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+        //heapProps.CreationNodeMask = 1;
+        //heapProps.VisibleNodeMask = 1;
 
-        D3D12_HEAP_PROPERTIES heapProps;
-        heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
-        heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-        heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-        heapProps.CreationNodeMask = 1;
-        heapProps.VisibleNodeMask = 1;
 
+        //D3D12_RESOURCE_DESC vertexBufferResourceDesc;
+        //vertexBufferResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        //vertexBufferResourceDesc.Alignment = 0;
+        //vertexBufferResourceDesc.Width = vertexBufferSize;
+        //vertexBufferResourceDesc.Height = 1;
+        //vertexBufferResourceDesc.DepthOrArraySize = 1;
+        //vertexBufferResourceDesc.MipLevels = 1;
+        //vertexBufferResourceDesc.Format = DXGI_FORMAT_UNKNOWN;
+        //vertexBufferResourceDesc.SampleDesc.Count = 1;
+        //vertexBufferResourceDesc.SampleDesc.Quality = 0;
+        //vertexBufferResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        //vertexBufferResourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
-        D3D12_RESOURCE_DESC vertexBufferResourceDesc;
-        vertexBufferResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        vertexBufferResourceDesc.Alignment = 0;
-        vertexBufferResourceDesc.Width = vertexBufferSize;
-        vertexBufferResourceDesc.Height = 1;
-        vertexBufferResourceDesc.DepthOrArraySize = 1;
-        vertexBufferResourceDesc.MipLevels = 1;
-        vertexBufferResourceDesc.Format = DXGI_FORMAT_UNKNOWN;
-        vertexBufferResourceDesc.SampleDesc.Count = 1;
-        vertexBufferResourceDesc.SampleDesc.Quality = 0;
-        vertexBufferResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-        vertexBufferResourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+        //// Note: using upload heaps to transfer static data like vert buffers is not 
+        //// recommended. Every time the GPU needs it, the upload heap will be marshalled 
+        //// over. Please read up on Default Heap usage. An upload heap is used here for 
+        //// code simplicity and because there are very few verts to actually transfer.
+        //ThrowIfFailed(m_Device->CreateCommittedResource(
+        //    &heapProps,
+        //    D3D12_HEAP_FLAG_NONE,
+        //    &vertexBufferResourceDesc,
+        //    D3D12_RESOURCE_STATE_GENERIC_READ,
+        //    nullptr,
+        //    IID_PPV_ARGS(&m_VertexBuffer)));
 
-        // Note: using upload heaps to transfer static data like vert buffers is not 
-        // recommended. Every time the GPU needs it, the upload heap will be marshalled 
-        // over. Please read up on Default Heap usage. An upload heap is used here for 
-        // code simplicity and because there are very few verts to actually transfer.
-        ThrowIfFailed(m_Device->CreateCommittedResource(
-            &heapProps,
-            D3D12_HEAP_FLAG_NONE,
-            &vertexBufferResourceDesc,
-            D3D12_RESOURCE_STATE_GENERIC_READ,
-            nullptr,
-            IID_PPV_ARGS(&m_VertexBuffer)));
-
-        // Copy the triangle data to the vertex buffer.
-        UINT8* pVertexDataBegin;
-        D3D12_RANGE readRange;        // We do not intend to read from this resource on the CPU.
-        readRange.Begin = 0;
-        readRange.End = 0;
-        ThrowIfFailed(m_VertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin)));
-        memcpy(pVertexDataBegin, triangleVertices, sizeof(triangleVertices));
-        m_VertexBuffer->Unmap(0, nullptr);
+        //// Copy the triangle data to the vertex buffer.
+        //UINT8* pVertexDataBegin;
+        //D3D12_RANGE readRange;        // We do not intend to read from this resource on the CPU.
+        //readRange.Begin = 0;
+        //readRange.End = 0;
+        //ThrowIfFailed(m_VertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin)));
+        //memcpy(pVertexDataBegin, triangleVertices, sizeof(triangleVertices));
+        //m_VertexBuffer->Unmap(0, nullptr);
 
         // Initialize the vertex buffer view.
-        m_VertexBufferView.BufferLocation = m_VertexBuffer->GetGPUVirtualAddress();
+        m_VertexBufferView.BufferLocation = m_DX12VertexBuffer->GetGPUAddress();
         m_VertexBufferView.StrideInBytes = sizeof(Vertex);
         m_VertexBufferView.SizeInBytes = vertexBufferSize;
+
+        m_DX12VertexBuffer->Flush(m_CommandList.Get());
     }
 
     // Create the constant buffer.

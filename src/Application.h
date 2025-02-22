@@ -8,6 +8,8 @@
 #include <directxmath.h>
 
 #include <vector>
+#include <memory>
+#include "DX12Buffer.h"
 
 class Application
 {
@@ -21,7 +23,7 @@ public:
 		m_RTVDescriptorSize(0),
 		m_VertexBufferView()
 	{}
-
+	~Application();
 	void Init(HWND hwnd);
 	void Update(float dt);
 	void Render();
@@ -87,12 +89,12 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_CommandList;
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_RootSignature;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_PipelineState;
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_VertexBuffer;
+	//Microsoft::WRL::ComPtr<ID3D12Resource> m_VertexBuffer;
 	D3D12_VERTEX_BUFFER_VIEW m_VertexBufferView;
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_ConstantBuffer;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_Texture;
-
+	std::shared_ptr<DX12Buffer> m_DX12VertexBuffer;
 	Constants m_CBData;
 	UINT8* m_pCbvDataBegin;
 	UINT m_RTVDescriptorSize;
