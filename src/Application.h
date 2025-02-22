@@ -23,7 +23,7 @@ public:
 	{}
 
 	void Init(HWND hwnd);
-	void Update();
+	void Update(float dt);
 	void Render();
 	void Destroy();
 	void OnKeyUp(UINT8 key);
@@ -108,7 +108,7 @@ private:
 
 	DirectX::XMFLOAT3 m_CameraMovementDirection = DirectX::XMFLOAT3(0,0,0);
 	DirectX::XMVECTOR m_CameraMovementPosition = DirectX::XMVectorSet(0,0,-1300,0);
-	float m_CameraSpeed = 10.0f;
+	float m_CameraSpeed = 100.0f;
 	bool m_InputTable[256];
 };
 

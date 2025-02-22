@@ -17,32 +17,32 @@ void Application::Init(HWND hwnd)
 	LoadAssets();
 }
 
-void Application::Update()
+void Application::Update(float dt)
 {
     m_CameraMovementDirection = DirectX::XMFLOAT3(0,0,0);
     if (IsKeyPressed('W')) 
     {
-        m_CameraMovementDirection.z += m_CameraSpeed;
+        m_CameraMovementDirection.z += m_CameraSpeed * dt;
     }
     if (IsKeyPressed('S'))
     {
-        m_CameraMovementDirection.z -= m_CameraSpeed;
+        m_CameraMovementDirection.z -= m_CameraSpeed * dt;
     }
     if (IsKeyPressed('D'))
     {
-        m_CameraMovementDirection.x += m_CameraSpeed;
+        m_CameraMovementDirection.x += m_CameraSpeed * dt;
     }
     if (IsKeyPressed('A'))
     {
-        m_CameraMovementDirection.x -= m_CameraSpeed;
+        m_CameraMovementDirection.x -= m_CameraSpeed * dt;
     }
     if (IsKeyPressed(VK_SPACE))
     {
-        m_CameraMovementDirection.y += m_CameraSpeed;
+        m_CameraMovementDirection.y += m_CameraSpeed * dt;
     }
     if (IsKeyPressed(VK_CONTROL))
     {
-        m_CameraMovementDirection.y -= m_CameraSpeed;
+        m_CameraMovementDirection.y -= m_CameraSpeed * dt;
     }
 
     DirectX::XMVECTOR movementDirection = DirectX::XMLoadFloat3(&m_CameraMovementDirection);
@@ -451,7 +451,6 @@ void Application::LoadAssets()
 
     {
         fastObjMesh* mesh =  fast_obj_read("./data/Sponza/sponza.obj");
-
         fast_obj_destroy(mesh);
     }
 

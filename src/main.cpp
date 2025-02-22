@@ -8,6 +8,8 @@
 #include <d3d12.h>
 #include <dxgi1_6.h>
 #include "Application.h"
+#include <chrono>
+#include <sstream>
 
 static bool isRunning = true;
 
@@ -57,17 +59,20 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     ShowWindow(hwnd, nCmdShow);
     
     // Run the message loop.
- 
+    float dt = 0;
     MSG msg = { };
     while (isRunning)
     {
+        auto begin = std::chrono::high_resolution_clock::now();
         while (PeekMessage(&msg, NULL, 0, 0,PM_REMOVE) )
         {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
-        context->Update();
+        context->Update(dt);
         context->Render();
+        auto end = std::chrono::high_resolution_clock::now();
+        dt = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() / 1000.0f;
     }
     
     delete context;
