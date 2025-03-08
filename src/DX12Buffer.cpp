@@ -13,33 +13,33 @@ DX12Buffer::DX12Buffer(const void* data, uint64_t dataSize)
     heapProps.VisibleNodeMask = 1;
 
 
-    D3D12_RESOURCE_DESC vertexBufferResourceDesc;
-    vertexBufferResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-    vertexBufferResourceDesc.Alignment = 0;
-    vertexBufferResourceDesc.Width = dataSize;
-    vertexBufferResourceDesc.Height = 1;
-    vertexBufferResourceDesc.DepthOrArraySize = 1;
-    vertexBufferResourceDesc.MipLevels = 1;
-    vertexBufferResourceDesc.Format = DXGI_FORMAT_UNKNOWN;
-    vertexBufferResourceDesc.SampleDesc.Count = 1;
-    vertexBufferResourceDesc.SampleDesc.Quality = 0;
-    vertexBufferResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-    vertexBufferResourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+    D3D12_RESOURCE_DESC bufferResourceDesc;
+    bufferResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    bufferResourceDesc.Alignment = 0;
+    bufferResourceDesc.Width = dataSize;
+    bufferResourceDesc.Height = 1;
+    bufferResourceDesc.DepthOrArraySize = 1;
+    bufferResourceDesc.MipLevels = 1;
+    bufferResourceDesc.Format = DXGI_FORMAT_UNKNOWN;
+    bufferResourceDesc.SampleDesc.Count = 1;
+    bufferResourceDesc.SampleDesc.Quality = 0;
+    bufferResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+    bufferResourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
     ThrowIfFailed(DX12DeviceManager::GetInstance()->GetDevice()->CreateCommittedResource(
         &heapProps,
         D3D12_HEAP_FLAG_NONE,
-        &vertexBufferResourceDesc,
+        &bufferResourceDesc,
         D3D12_RESOURCE_STATE_GENERIC_READ,
         nullptr,
         IID_PPV_ARGS(&m_UploadBuffer)));
 
-    UINT8* pVertexDataBegin;
+    UINT8* pdataBegin;
     D3D12_RANGE readRange;        // We do not intend to read from this resource on the CPU.
     readRange.Begin = 0;
     readRange.End = 0;
-    ThrowIfFailed(m_UploadBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin)));
-    memcpy(pVertexDataBegin, data, dataSize);
+    ThrowIfFailed(m_UploadBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pdataBegin)));
+    memcpy(pdataBegin, data, dataSize);
     m_UploadBuffer->Unmap(0, nullptr);
 
 
@@ -47,7 +47,7 @@ DX12Buffer::DX12Buffer(const void* data, uint64_t dataSize)
     ThrowIfFailed(DX12DeviceManager::GetInstance()->GetDevice()->CreateCommittedResource(
         &heapProps,
         D3D12_HEAP_FLAG_NONE,
-        &vertexBufferResourceDesc,
+        &bufferResourceDesc,
         D3D12_RESOURCE_STATE_COMMON,
         nullptr,
         IID_PPV_ARGS(&m_GPUBuffer)));

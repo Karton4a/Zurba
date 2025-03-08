@@ -6,6 +6,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include "DX12DeviceManager.h"
+#include <format>
 
 Application::~Application()
 {
@@ -15,10 +16,7 @@ Application::~Application()
 void Application::Init(HWND hwnd)
 {
     DX12DeviceManager::Initialize();
-    for (int i = 0; i < 255; i++)
-    {
-        m_InputTable[i] = false;
-    }
+    memset(m_InputTable, false, 255);
     m_WindowHandler = hwnd;
 	LoadPipeline();
 	LoadAssets();
@@ -405,7 +403,8 @@ void Application::LoadAssets()
         D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
         {
             { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+            { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
         };
         D3D12_SHADER_BYTECODE vertexByteCode;
         vertexByteCode.pShaderBytecode = vertexShader->GetBufferPointer();
@@ -464,18 +463,39 @@ void Application::LoadAssets()
             DirectX::XMFLOAT3 normals;
             DirectX::XMFLOAT2 uv;
         };
+        std::vector<Vertex> vertices;
 
-        Vertex* vertices = nullptr;
-        vertices = new Vertex[mesh->index_count];
-        for (size_t i = 0; i < mesh->index_count; i++)
+        for (size_t groupIndex = 0; groupIndex < mesh->group_count; groupIndex++)
         {
-            fastObjIndex index = mesh->indices[i];
-            Vertex& vertex = vertices[i];
-            vertex.position = DirectX::XMFLOAT3(mesh->positions + index.p);
-            vertex.normals = DirectX::XMFLOAT3(mesh->positions + index.n);
-            vertex.uv = DirectX::XMFLOAT2(mesh->texcoords + index.t);
+            fastObjGroup group = mesh->groups[groupIndex];
+            uint32_t readIndexes = 0;
+            for (size_t i = 0; i < group.face_count; i++)
+            {
+                uint32_t vertexsPerFace = mesh->face_vertices[group.face_offset + i];
+                for (size_t j = 0; j < vertexsPerFace; j++)
+                {
+                    fastObjIndex index = mesh->indices[group.index_offset + readIndexes + j];
+                    Vertex vertex;
+                    vertex.position = DirectX::XMFLOAT3(mesh->positions + 3 * index.p);
+                    vertex.normals = DirectX::XMFLOAT3(mesh->normals + 3 * index.n);
+                    vertex.uv = DirectX::XMFLOAT2(mesh->texcoords + 2 * index.t);
+                    vertices.push_back(vertex);
+                }
+                readIndexes += vertexsPerFace;
+            }
+
         }
-        delete[] vertices;
+        m_SponzaVertexBuffer = std::make_shared<DX12Buffer>(vertices.data(), vertices.size() * sizeof(Vertex));
+        m_SponzaVertexBuffer->Flush(m_CommandList.Get());
+
+
+
+        m_SponzaView.BufferLocation = m_SponzaVertexBuffer->GetGPUAddress();
+        m_SponzaView.StrideInBytes = sizeof(Vertex);
+        m_SponzaView.SizeInBytes = vertices.size() * sizeof(Vertex);
+        m_SponzaVertexCount = vertices.size();
+
+
         fast_obj_destroy(mesh);
     }
 
@@ -818,8 +838,8 @@ void Application::WriteCommandList()
 
     
     m_CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    m_CommandList->IASetVertexBuffers(0, 1, &m_VertexBufferView);
-    m_CommandList->DrawInstanced(6, 1, 0, 0);
+    m_CommandList->IASetVertexBuffers(0, 1, &m_SponzaView);
+    m_CommandList->DrawInstanced(m_SponzaVertexCount, 1, 0, 0);
 
     // Indicate that the back buffer will now be used to present.
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;

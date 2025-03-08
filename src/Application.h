@@ -95,6 +95,9 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_ConstantBuffer;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_Texture;
 	std::shared_ptr<DX12Buffer> m_DX12VertexBuffer;
+	std::shared_ptr<DX12Buffer> m_SponzaVertexBuffer;
+	uint32_t m_SponzaVertexCount;
+	D3D12_VERTEX_BUFFER_VIEW m_SponzaView;
 	Constants m_CBData;
 	UINT8* m_pCbvDataBegin;
 	UINT m_RTVDescriptorSize;
