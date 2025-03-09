@@ -15,6 +15,8 @@ project(PROJECT_NAME)
    targetdir "bin/%{cfg.buildcfg}"
    cppdialect "C++20"
 
+   postbuildcommands { 'rd /s /q "bin/%{cfg.buildcfg}/data" & xcopy data "bin/%{cfg.buildcfg}/data" /s /i' }
+
    includedirs { "external" }
 
    links {"d3d12.lib", "dxgi.lib", "d3dcompiler.lib"}
