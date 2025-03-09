@@ -16,7 +16,6 @@ Application::~Application()
 void Application::Init(HWND hwnd)
 {
     DX12DeviceManager::Initialize();
-    memset(m_InputTable, false, 255);
     m_WindowHandler = hwnd;
 	LoadPipeline();
 	LoadAssets();
@@ -25,37 +24,48 @@ void Application::Init(HWND hwnd)
 void Application::Update(float dt)
 {
     m_CameraMovementDirection = DirectX::XMFLOAT3(0,0,0);
-    if (IsKeyPressed('W')) 
+    float cameraspeed = m_CameraSpeed;
+    if (m_Input.IsKeyPressed(VK_SHIFT))
     {
-        m_CameraMovementDirection.z += m_CameraSpeed * dt;
+        cameraspeed *= m_CameraAcceleration;
     }
-    if (IsKeyPressed('S'))
+    if (m_Input.IsKeyPressed('W')) 
     {
-        m_CameraMovementDirection.z -= m_CameraSpeed * dt;
+        m_CameraMovementDirection.z += cameraspeed * dt;
     }
-    if (IsKeyPressed('D'))
+    if (m_Input.IsKeyPressed('S'))
     {
-        m_CameraMovementDirection.x += m_CameraSpeed * dt;
+        m_CameraMovementDirection.z -= cameraspeed * dt;
     }
-    if (IsKeyPressed('A'))
+    if (m_Input.IsKeyPressed('D'))
     {
-        m_CameraMovementDirection.x -= m_CameraSpeed * dt;
+        m_CameraMovementDirection.x += cameraspeed * dt;
     }
-    if (IsKeyPressed(VK_SPACE))
+    if (m_Input.IsKeyPressed('A'))
     {
-        m_CameraMovementDirection.y += m_CameraSpeed * dt;
+        m_CameraMovementDirection.x -= cameraspeed * dt;
     }
-    if (IsKeyPressed(VK_CONTROL))
+    if (m_Input.IsKeyPressed(VK_SPACE))
     {
-        m_CameraMovementDirection.y -= m_CameraSpeed * dt;
+        m_CameraMovementDirection.y += cameraspeed * dt;
+    }
+    if (m_Input.IsKeyPressed(VK_CONTROL))
+    {
+        m_CameraMovementDirection.y -= cameraspeed * dt;
     }
 
     DirectX::XMVECTOR movementDirection = DirectX::XMLoadFloat3(&m_CameraMovementDirection);
     m_CameraMovementPosition = DirectX::XMVectorAdd(m_CameraMovementPosition, movementDirection);
 
     DirectX::XMMATRIX model =  DirectX::XMMatrixTranslation(0,0,0) * DirectX::XMMatrixRotationZ(0);
-
-    DirectX::XMVECTOR focusPosition = DirectX::XMVectorAdd(m_CameraMovementPosition, DirectX::XMVectorSet(0, 0, 1, 0));
+    if (m_Input.IsMouseKeyPressed(Input::MouseKey::LeftKey))
+    {
+        auto mouseDelta = m_Input.GetMouseDelta();
+        float coff = 0.01f;
+        auto rotation = DirectX::XMQuaternionRotationRollPitchYaw(coff * mouseDelta.y,coff * mouseDelta.x,0);
+        m_CameraViewDirection = DirectX::XMVector3Rotate(m_CameraViewDirection, rotation);
+    }
+    DirectX::XMVECTOR focusPosition = DirectX::XMVectorAdd(m_CameraMovementPosition, m_CameraViewDirection);
 
     DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH(m_CameraMovementPosition, focusPosition, DirectX::XMVectorSet(0, 1 , 0 , 0));
 
@@ -84,12 +94,27 @@ void Application::Render()
 
 void Application::OnKeyUp(UINT8 key)
 {
-    m_InputTable[key] = false;
+    m_Input.RegisterKeyUp(key);
 }
 
 void Application::OnKeyDown(UINT8 key)
 {
-    m_InputTable[key] = true;
+    m_Input.RegisterKeyDown(key);
+}
+
+void Application::OnMouseDown(Input::MouseKey key)
+{
+    m_Input.RegisterMouseDown(key);
+}
+
+void Application::OnMouseUp(Input::MouseKey key)
+{
+    m_Input.RegisterMouseUp(key);
+}
+
+void Application::SetMousePosition(POINTS point)
+{
+    m_Input.SetMousePosition(point.x, point.y);
 }
 
 std::vector<UINT8> Application::GenerateTextureData()

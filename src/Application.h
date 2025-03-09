@@ -10,6 +10,7 @@
 #include <vector>
 #include <memory>
 #include "DX12Buffer.h"
+#include "Input.h"
 
 class Application
 {
@@ -30,7 +31,9 @@ public:
 	void Destroy();
 	void OnKeyUp(UINT8 key);
 	void OnKeyDown(UINT8 key);
-	inline bool IsKeyPressed(UINT8 key) const { return m_InputTable[key]; };
+	void OnMouseDown(Input::MouseKey key);
+	void OnMouseUp(Input::MouseKey key);
+	void SetMousePosition(POINTS point);
 	std::vector<UINT8> GenerateTextureData();
 private:
 	void LoadPipeline();
@@ -113,8 +116,10 @@ private:
 
 	DirectX::XMFLOAT3 m_CameraMovementDirection = DirectX::XMFLOAT3(0,0,0);
 	DirectX::XMVECTOR m_CameraMovementPosition = DirectX::XMVectorSet(0,0,-1300,0);
+	DirectX::XMVECTOR m_CameraViewDirection = DirectX::XMVectorSet(0, 0, 1, 0);
 	float m_CameraSpeed = 100.0f;
-	bool m_InputTable[256];
+	float m_CameraAcceleration = 10.0f;
+	Input m_Input;
 };
 
 template<UINT MaxSubresources>

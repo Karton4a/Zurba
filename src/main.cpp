@@ -10,6 +10,7 @@
 #include "Application.h"
 #include <chrono>
 #include <sstream>
+#include "DXHelpers.h"
 
 static bool isRunning = true;
 
@@ -69,6 +70,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
+        POINT pos;
+        GetCursorPos(&pos);
+        context->SetMousePosition({ (short)pos.x, (short)pos.y });
         context->Update(dt);
         context->Render();
         auto end = std::chrono::high_resolution_clock::now();
@@ -108,6 +112,29 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         if (ctx)
         {
             ctx->OnKeyUp(static_cast<UINT8>(wParam));
+        }
+        return 0;
+    case WM_LBUTTONDOWN:
+        if (ctx)
+        {
+            SetCapture(hwnd);
+
+            ctx->OnMouseDown(Input::MouseKey::LeftKey);
+        }
+        return 0;
+    case WM_LBUTTONUP:
+        if (ctx)
+        {
+            SetCapture(hwnd);
+            ctx->OnMouseUp(Input::MouseKey::LeftKey);
+        }
+        return 0;
+    case WM_MOUSEMOVE:
+        if (ctx)
+        {
+            POINTS ptsBegin;
+            ptsBegin = MAKEPOINTS(lParam);
+            //ctx->SetMousePosition(ptsBegin);
         }
         return 0;
     }
