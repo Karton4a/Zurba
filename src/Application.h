@@ -88,6 +88,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_RTVHeap;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_CBVHeap;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_SamplerHeap;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_DSVHeap;
 
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_CommandList;
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_RootSignature;
@@ -111,6 +112,7 @@ private:
 	UINT64 m_FenceValue;
 
 	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, 2> m_RenderTargets;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_DepthStencilBuffer;
 	HWND m_WindowHandler;
 	DirectX::XMUINT2 m_WindowSize;
 

@@ -69,7 +69,7 @@ void Application::Update(float dt)
 
     DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH(m_CameraMovementPosition, focusPosition, DirectX::XMVectorSet(0, 1 , 0 , 0));
 
-    DirectX::XMMATRIX projection = DirectX::XMMatrixPerspectiveFovLH(DirectX::XMConvertToRadians(30), (float)m_WindowSize.x / m_WindowSize.y, 0.0000001f, 10000.0f);
+    DirectX::XMMATRIX projection = DirectX::XMMatrixPerspectiveFovLH(DirectX::XMConvertToRadians(30), (float)m_WindowSize.x / m_WindowSize.y, 5000.0f, 0.0000001f);
     m_CBData.MVP = model * view * projection;
 
     memcpy(m_pCbvDataBegin, &m_CBData, sizeof(m_CBData));
@@ -197,8 +197,7 @@ void Application::LoadPipeline()
             dxgiAdapterDesc1.DedicatedVideoMemory > maxDedicatedVideoMemory)
         {
             maxDedicatedVideoMemory = dxgiAdapterDesc1.DedicatedVideoMemory;
-            OutputDebugString(dxgiAdapterDesc1.Description);
-            OutputDebugString(L"\n");
+            FormatOutputDebug(L"{}\n", dxgiAdapterDesc1.Description);
             ThrowIfFailed(dxgiAdapter1.As(&dxgiAdapter4));
         }
     }
@@ -271,7 +270,7 @@ void Application::LoadPipeline()
     viewport.Width = static_cast<float>(m_WindowSize.x);
     viewport.Height = static_cast<float>(m_WindowSize.y);
     viewport.MinDepth = .1f;
-    viewport.MaxDepth = 1000.f;
+    viewport.MaxDepth = 5000.f;
 
 
     DXGI_SWAP_CHAIN_DESC1 swapchainDesc = {};
@@ -331,6 +330,14 @@ void Application::LoadPipeline()
             &samplerHeapDesc, IID_PPV_ARGS(&m_SamplerHeap)));
 
     }
+    {
+        D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
+        dsvHeapDesc.NumDescriptors = 1;
+        dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+        dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+        ThrowIfFailed(m_Device->CreateDescriptorHeap(
+            &dsvHeapDesc, IID_PPV_ARGS(&m_DSVHeap)));
+    }
 }
 
 void Application::LoadAssets()
@@ -370,9 +377,9 @@ void Application::LoadAssets()
 
         D3D12_STATIC_SAMPLER_DESC sampler = {};
         sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
-        sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-        sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-        sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+        sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+        sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+        sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
         sampler.MipLODBias = 0;
         sampler.MaxAnisotropy = 0;
         sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
@@ -413,16 +420,14 @@ void Application::LoadAssets()
         if (shaderError != nullptr)
         {
             //static_cast<const char*>(shaderError->GetBufferPointer())
-            OutputDebugStringA("Vertex shader error:");
-            OutputDebugStringA(static_cast<const char*>(shaderError->GetBufferPointer()));
+            FormatOutputDebugA("Vertex shader error: {}", static_cast<const char*>(shaderError->GetBufferPointer()));
         }
 
         (D3DCompileFromFile(L"./data/shaders.hlsl", nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, &shaderError));
         if (shaderError != nullptr)
         {
             //static_cast<const char*>(shaderError->GetBufferPointer())
-            OutputDebugStringA("Pixel shader error:");
-            OutputDebugStringA(static_cast<const char*>(shaderError->GetBufferPointer()));
+            FormatOutputDebugA("Pixel shader error: {}", static_cast<const char*>(shaderError->GetBufferPointer()));
         }
         // Define the vertex input layout.
         D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
@@ -470,12 +475,31 @@ void Application::LoadAssets()
         psoDesc.PS = pixelByteCode;
         psoDesc.RasterizerState = rasterizerDesc;
         psoDesc.BlendState = blendDesc;
-        psoDesc.DepthStencilState.DepthEnable = FALSE;
-        psoDesc.DepthStencilState.StencilEnable = FALSE;
+
+        D3D12_DEPTH_STENCIL_DESC dsDesc;
+        dsDesc.DepthEnable = TRUE;
+        dsDesc.DepthFunc = D3D12_COMPARISON_FUNC_GREATER;
+        dsDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+       
+        dsDesc.StencilEnable = FALSE;
+       /* dsDesc.StencilReadMask = ~0;
+        dsDesc.StencilWriteMask = ~0;
+        dsDesc.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_NEVER;
+        dsDesc.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+        dsDesc.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+        dsDesc.FrontFace.StencilPassOp = D3D12_STENCIL_OP_KEEP;
+
+        dsDesc.BackFace.StencilFunc = D3D12_COMPARISON_FUNC_NEVER;
+        dsDesc.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+        dsDesc.BackFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+        dsDesc.BackFace.StencilPassOp = D3D12_STENCIL_OP_KEEP;*/
+
+        psoDesc.DepthStencilState = dsDesc;
         psoDesc.SampleMask = UINT_MAX;
         psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
         psoDesc.NumRenderTargets = 1;
         psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+        psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
         psoDesc.SampleDesc.Count = 1;
         ThrowIfFailed(m_Device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_PipelineState)));
     }
@@ -490,25 +514,20 @@ void Application::LoadAssets()
         };
         std::vector<Vertex> vertices;
 
-        for (size_t groupIndex = 0; groupIndex < mesh->group_count; groupIndex++)
+        uint32_t readIndexes = 0;
+        for (size_t i = 0; i < mesh->face_count; i++)
         {
-            fastObjGroup group = mesh->groups[groupIndex];
-            uint32_t readIndexes = 0;
-            for (size_t i = 0; i < group.face_count; i++)
+            uint32_t vertexsPerFace = mesh->face_vertices[i];
+            for (size_t j = 0; j < vertexsPerFace; j++)
             {
-                uint32_t vertexsPerFace = mesh->face_vertices[group.face_offset + i];
-                for (size_t j = 0; j < vertexsPerFace; j++)
-                {
-                    fastObjIndex index = mesh->indices[group.index_offset + readIndexes + j];
-                    Vertex vertex;
-                    vertex.position = DirectX::XMFLOAT3(mesh->positions + 3 * index.p);
-                    vertex.normals = DirectX::XMFLOAT3(mesh->normals + 3 * index.n);
-                    vertex.uv = DirectX::XMFLOAT2(mesh->texcoords + 2 * index.t);
-                    vertices.push_back(vertex);
-                }
-                readIndexes += vertexsPerFace;
+                fastObjIndex index = mesh->indices[readIndexes + j];
+                Vertex vertex;
+                vertex.position = DirectX::XMFLOAT3(mesh->positions + 3 * index.p);
+                vertex.normals = DirectX::XMFLOAT3(mesh->normals + 3 * index.n);
+                vertex.uv = DirectX::XMFLOAT2(mesh->texcoords + 2 * index.t);
+                vertices.push_back(vertex);
             }
-
+            readIndexes += vertexsPerFace;
         }
         m_SponzaVertexBuffer = std::make_shared<DX12Buffer>(vertices.data(), vertices.size() * sizeof(Vertex));
         m_SponzaVertexBuffer->Flush(m_CommandList.Get());
@@ -749,11 +768,56 @@ void Application::LoadAssets()
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
         srvDesc.Texture2D.MipLevels = 1;
 
+        
+
         D3D12_CPU_DESCRIPTOR_HANDLE handle(m_CBVHeap->GetCPUDescriptorHandleForHeapStart());
         UINT descriptorRecordSize = m_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
         handle.ptr += descriptorRecordSize;
 
         m_Device->CreateShaderResourceView(m_Texture.Get(), &srvDesc, handle);
+    }
+    //Create Depth Buffer
+    {
+        D3D12_RESOURCE_DESC textureDesc = {};
+        textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+        textureDesc.MipLevels = 1;
+        textureDesc.Format = DXGI_FORMAT_D32_FLOAT;
+        textureDesc.Width = m_WindowSize.x;
+        textureDesc.Height = m_WindowSize.y;
+        textureDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+        textureDesc.DepthOrArraySize = 1;
+        textureDesc.SampleDesc.Count = 1;
+        textureDesc.SampleDesc.Quality = 0;
+
+        D3D12_HEAP_PROPERTIES heapProps;
+        heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+        heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+        heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+        heapProps.CreationNodeMask = 1;
+        heapProps.VisibleNodeMask = 1;
+
+        D3D12_CLEAR_VALUE optimizedClearValue = {};
+        optimizedClearValue.Format = DXGI_FORMAT_D32_FLOAT;
+        optimizedClearValue.DepthStencil.Depth = 0.0f; // Default depth value.
+        optimizedClearValue.DepthStencil.Stencil = 0;
+
+        ThrowIfFailed(m_Device->CreateCommittedResource(
+            &heapProps,
+            D3D12_HEAP_FLAG_NONE,
+            &textureDesc,
+            D3D12_RESOURCE_STATE_DEPTH_WRITE,
+            &optimizedClearValue,
+            IID_PPV_ARGS(&m_DepthStencilBuffer)));
+
+        D3D12_DEPTH_STENCIL_VIEW_DESC dsvView;
+        dsvView.Format = DXGI_FORMAT_D32_FLOAT;
+        dsvView.Flags = D3D12_DSV_FLAG_NONE;
+        dsvView.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+        dsvView.Texture2D.MipSlice = 0;
+
+        D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_DSVHeap->GetCPUDescriptorHandleForHeapStart());
+
+        m_Device->CreateDepthStencilView(m_DepthStencilBuffer.Get(), &dsvView, dsvHandle);
     }
 
     ThrowIfFailed(m_CommandList->Close());
@@ -822,7 +886,7 @@ void Application::WriteCommandList()
     viewport.TopLeftY = 0;
     viewport.Height = m_WindowSize.y;
     viewport.Width = m_WindowSize.x;
-    viewport.MaxDepth = 10000.0f;
+    viewport.MaxDepth = 5000.0f;
     viewport.MinDepth = 0.000001f;
     D3D12_RECT scissorRect;
     scissorRect.left = 0;
@@ -855,12 +919,14 @@ void Application::WriteCommandList()
 
     rtvHandle.ptr += m_FrameIndex * m_RTVDescriptorSize;
 
-    m_CommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+    D3D12_CPU_DESCRIPTOR_HANDLE dsHandle(m_DSVHeap->GetCPUDescriptorHandleForHeapStart());
+
+    m_CommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsHandle);
 
     // Record commands.
     const float clearColor[] = { 1.0f, 0.0f, 1.0f, 1.0f };
     m_CommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-
+    m_CommandList->ClearDepthStencilView(dsHandle, D3D12_CLEAR_FLAG_DEPTH ,0.0f,0,0,NULL);
     
     m_CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     m_CommandList->IASetVertexBuffers(0, 1, &m_SponzaView);
