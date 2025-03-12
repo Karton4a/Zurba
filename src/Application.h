@@ -24,7 +24,7 @@ public:
 		m_FenceEvent(0),
 		m_RTVDescriptorSize(0),
 		m_VertexBufferView(),
-		m_Camera(DirectX::XMFLOAT3(0,0,0), 30, (float)width / height, 5000.0f, 0.01f)
+		m_Camera(DirectX::XMFLOAT3(0,100,0), 30, (float)width / height, 5000.0f, 0.01f)
 	{}
 	~Application();
 	void Init(HWND hwnd);
@@ -118,7 +118,6 @@ private:
 	HWND m_WindowHandler;
 	DirectX::XMUINT2 m_WindowSize;
 	Camera m_Camera;
-	DirectX::XMVECTOR m_CameraMovementPosition = DirectX::XMVectorSet(0,0,-1300,0);
 	float m_CameraSpeed = 100.0f;
 	float m_CameraRotaionSpeed = 10.0f;
 	float m_CameraAcceleration = 10.0f;

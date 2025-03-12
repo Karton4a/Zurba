@@ -41,5 +41,7 @@ void Camera::FlushCalculations()
 	{
 		m_ViewProjectionMatrix = DirectX::XMMatrixMultiply(m_ViewMatrix, m_ProjectionMatrix);
 	}
+	m_ViewDirty = false;
+	m_ProjectionDirty = false;
 }
 

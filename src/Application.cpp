@@ -57,9 +57,9 @@ void Application::Update(float dt)
     {
         cameraMoveVector = DirectX::XMVectorNegativeMultiplySubtract(speedMagnitude, upVector, cameraMoveVector);
     }
-
-    m_CameraMovementPosition = DirectX::XMVectorAdd(m_CameraMovementPosition, cameraMoveVector);
-    m_Camera.SetPosition(m_CameraMovementPosition);
+    auto cameraPosition = m_Camera.GetPosition();
+    cameraPosition = DirectX::XMVectorAdd(cameraPosition, cameraMoveVector);
+    m_Camera.SetPosition(cameraPosition);
 
     if (m_Input.IsMouseKeyPressed(Input::MouseKey::LeftKey))
     {
