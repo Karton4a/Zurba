@@ -11,6 +11,7 @@
 #include <memory>
 #include "DX12Buffer.h"
 #include "Input.h"
+#include "Camera.h"
 
 class Application
 {
@@ -22,7 +23,8 @@ public:
 		m_FenceValue(0), 
 		m_FenceEvent(0),
 		m_RTVDescriptorSize(0),
-		m_VertexBufferView()
+		m_VertexBufferView(),
+		m_Camera(DirectX::XMFLOAT3(0,0,0), 30, (float)width / height, 5000.0f, 0.01f)
 	{}
 	~Application();
 	void Init(HWND hwnd);
@@ -115,11 +117,10 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_DepthStencilBuffer;
 	HWND m_WindowHandler;
 	DirectX::XMUINT2 m_WindowSize;
-
-	DirectX::XMFLOAT3 m_CameraMovementDirection = DirectX::XMFLOAT3(0,0,0);
+	Camera m_Camera;
 	DirectX::XMVECTOR m_CameraMovementPosition = DirectX::XMVectorSet(0,0,-1300,0);
-	DirectX::XMVECTOR m_CameraViewDirection = DirectX::XMVectorSet(0, 0, 1, 0);
 	float m_CameraSpeed = 100.0f;
+	float m_CameraRotaionSpeed = 10.0f;
 	float m_CameraAcceleration = 10.0f;
 	Input m_Input;
 };

@@ -23,58 +23,56 @@ void Application::Init(HWND hwnd)
 
 void Application::Update(float dt)
 {
-    m_CameraMovementDirection = DirectX::XMFLOAT3(0,0,0);
+    DirectX::XMVECTOR cameraMoveVector = DirectX::XMVectorSet(0,0,0,0);
     float cameraspeed = m_CameraSpeed;
     if (m_Input.IsKeyPressed(VK_SHIFT))
     {
         cameraspeed *= m_CameraAcceleration;
     }
+    float mag = cameraspeed * dt;
+    DirectX::XMVECTOR speedMagnitude = DirectX::XMVectorSet(mag, mag, mag, mag);
+    DirectX::XMVECTOR upVector = DirectX::XMVectorSet(0, 1, 0, 0);
+    DirectX::XMVECTOR rightVector = DirectX::XMVector3Cross(upVector, m_Camera.GetViewDirection());
     if (m_Input.IsKeyPressed('W')) 
     {
-        m_CameraMovementDirection.z += cameraspeed * dt;
+        cameraMoveVector = DirectX::XMVectorMultiplyAdd(speedMagnitude, m_Camera.GetViewDirection(), cameraMoveVector);
     }
     if (m_Input.IsKeyPressed('S'))
     {
-        m_CameraMovementDirection.z -= cameraspeed * dt;
+        cameraMoveVector = DirectX::XMVectorNegativeMultiplySubtract(speedMagnitude, m_Camera.GetViewDirection(), cameraMoveVector);
     }
     if (m_Input.IsKeyPressed('D'))
     {
-        m_CameraMovementDirection.x += cameraspeed * dt;
+        cameraMoveVector = DirectX::XMVectorMultiplyAdd(speedMagnitude, rightVector, cameraMoveVector);
     }
     if (m_Input.IsKeyPressed('A'))
     {
-        m_CameraMovementDirection.x -= cameraspeed * dt;
+        cameraMoveVector = DirectX::XMVectorNegativeMultiplySubtract(speedMagnitude, rightVector, cameraMoveVector);
     }
     if (m_Input.IsKeyPressed(VK_SPACE))
     {
-        m_CameraMovementDirection.y += cameraspeed * dt;
+        cameraMoveVector = DirectX::XMVectorMultiplyAdd(speedMagnitude, upVector, cameraMoveVector);
     }
     if (m_Input.IsKeyPressed(VK_CONTROL))
     {
-        m_CameraMovementDirection.y -= cameraspeed * dt;
+        cameraMoveVector = DirectX::XMVectorNegativeMultiplySubtract(speedMagnitude, upVector, cameraMoveVector);
     }
 
-    DirectX::XMVECTOR movementDirection = DirectX::XMLoadFloat3(&m_CameraMovementDirection);
-    m_CameraMovementPosition = DirectX::XMVectorAdd(m_CameraMovementPosition, movementDirection);
+    m_CameraMovementPosition = DirectX::XMVectorAdd(m_CameraMovementPosition, cameraMoveVector);
+    m_Camera.SetPosition(m_CameraMovementPosition);
 
-    DirectX::XMMATRIX model =  DirectX::XMMatrixTranslation(0,0,0) * DirectX::XMMatrixRotationZ(0);
     if (m_Input.IsMouseKeyPressed(Input::MouseKey::LeftKey))
     {
         auto mouseDelta = m_Input.GetMouseDelta();
-        float coff = 0.01f;
-        auto rotation = DirectX::XMQuaternionRotationRollPitchYaw(coff * mouseDelta.y,coff * mouseDelta.x,0);
-        m_CameraViewDirection = DirectX::XMVector3Rotate(m_CameraViewDirection, rotation);
+        float speedMag = m_CameraRotaionSpeed * dt;
+        m_Camera.Rotate(speedMag * mouseDelta.x, speedMag * mouseDelta.y, 0);
     }
-    DirectX::XMVECTOR focusPosition = DirectX::XMVectorAdd(m_CameraMovementPosition, m_CameraViewDirection);
 
-    DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH(m_CameraMovementPosition, focusPosition, DirectX::XMVectorSet(0, 1 , 0 , 0));
+    m_Camera.FlushCalculations();
 
-    DirectX::XMMATRIX projection = DirectX::XMMatrixPerspectiveFovLH(DirectX::XMConvertToRadians(30), (float)m_WindowSize.x / m_WindowSize.y, 5000.0f, 0.0000001f);
-    m_CBData.MVP = model * view * projection;
-
+    DirectX::XMMATRIX model = DirectX::XMMatrixTranslation(0,0,0) * DirectX::XMMatrixRotationZ(0);
+    m_CBData.MVP = model * m_Camera.GetViewProjectionMatrix();
     memcpy(m_pCbvDataBegin, &m_CBData, sizeof(m_CBData));
-
-
 }
 
 void Application::Render()
