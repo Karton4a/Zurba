@@ -671,80 +671,15 @@ void Application::LoadAssets()
             stbi_uc value = data[i];
             OutputDebugString(value == 0 ? L"1" : L"0");
         }*/
+        m_myTexture = std::make_shared<DX12PixelStorage>(D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+            DXGI_FORMAT_R8G8B8A8_UNORM,
+            x,
+            y,
+            1);
 
-        // Describe and create a Texture2D.
-        D3D12_RESOURCE_DESC textureDesc = {};
-        textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-        textureDesc.MipLevels = 1;
-        textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-        textureDesc.Width = x;
-        textureDesc.Height = y;
-        textureDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-        textureDesc.DepthOrArraySize = 1;
-        textureDesc.SampleDesc.Count = 1;
-        textureDesc.SampleDesc.Quality = 0;
+        m_myTexture->LoadData(data, n * sizeof(stbi_uc));
 
-
-        D3D12_HEAP_PROPERTIES heapProps;
-        heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
-        heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-        heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-        heapProps.CreationNodeMask = 1;
-        heapProps.VisibleNodeMask = 1;
-
-        ThrowIfFailed(m_Device->CreateCommittedResource(
-            &heapProps,
-            D3D12_HEAP_FLAG_NONE,
-            &textureDesc,
-            D3D12_RESOURCE_STATE_COPY_DEST,
-            nullptr,
-            IID_PPV_ARGS(&m_Texture)));
-
-        //GetRequiredIntermediateSize 
-        const UINT64 uploadBufferSize = x * y * sizeof(UINT8) * n + 100000;
-        
-        heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
-
-        D3D12_RESOURCE_DESC uploadBufferResourceDesc;
-        uploadBufferResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        uploadBufferResourceDesc.Alignment = 0;
-        uploadBufferResourceDesc.Width = uploadBufferSize;
-        uploadBufferResourceDesc.Height = 1;
-        uploadBufferResourceDesc.DepthOrArraySize = 1;
-        uploadBufferResourceDesc.MipLevels = 1;
-        uploadBufferResourceDesc.Format = DXGI_FORMAT_UNKNOWN;
-        uploadBufferResourceDesc.SampleDesc.Count = 1;
-        uploadBufferResourceDesc.SampleDesc.Quality = 0;
-        uploadBufferResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-        uploadBufferResourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-
-        // Create the GPU upload buffer.
-        ThrowIfFailed(m_Device->CreateCommittedResource(
-            &heapProps,
-            D3D12_HEAP_FLAG_NONE,
-            &uploadBufferResourceDesc,
-            D3D12_RESOURCE_STATE_GENERIC_READ,
-            nullptr,
-            IID_PPV_ARGS(&textureUploadHeap)));
-
-        // Copy data to the intermediate upload heap and then schedule a copy 
-        // from the upload heap to the Texture2D.
-
-        //std::vector<UINT8> texture = GenerateTextureData();
-
-        D3D12_SUBRESOURCE_DATA textureData = {};
-        textureData.pData = data;
-        textureData.RowPitch = x * n * sizeof(stbi_uc);
-        textureData.SlicePitch = textureData.RowPitch * y;
-
-        //m_CommandList->CopyTextureRegion()
-        //m_CommandList->CopyResource(m_Texture.Get(), textureUploadHeap.Get()); //?
-       // m_CommandList->Copy
-        UINT64 res =  UpdateSubresources<5>(m_CommandList.Get(), m_Texture.Get(), textureUploadHeap.Get(), 0, 0, 1, &textureData);
-        if (res == 0)
-        {
-            OutputDebugString(L"UpdateSubresource error\n");
-        }
+        m_myTexture->Flush(m_CommandList.Get());
 
         stbi_image_free(data);
 
@@ -753,7 +688,7 @@ void Application::LoadAssets()
         barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
         barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
         barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-        barrier.Transition.pResource = m_Texture.Get();
+        barrier.Transition.pResource = m_myTexture->GetResource();
         barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
         barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 
@@ -762,7 +697,7 @@ void Application::LoadAssets()
         // Describe and create a SRV for the texture.
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
         srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        srvDesc.Format = textureDesc.Format;
+        srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
         srvDesc.Texture2D.MipLevels = 1;
 
@@ -772,7 +707,7 @@ void Application::LoadAssets()
         UINT descriptorRecordSize = m_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
         handle.ptr += descriptorRecordSize;
 
-        m_Device->CreateShaderResourceView(m_Texture.Get(), &srvDesc, handle);
+        m_Device->CreateShaderResourceView(m_myTexture->GetResource(), &srvDesc, handle);
     }
     //Create Depth Buffer
     {

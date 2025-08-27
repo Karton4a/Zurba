@@ -1,0 +1,3 @@
+[submodule "external/premake-ecc"]
+	path = external/premake-ecc
+	url = https://github.com/MattBystrin/premake-ecc.git

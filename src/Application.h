@@ -12,6 +12,7 @@
 #include "DX12Buffer.h"
 #include "Input.h"
 #include "Camera.h"
+#include "DX12PixelStorage.h"
 
 class Application
 {
@@ -99,7 +100,7 @@ private:
 	D3D12_VERTEX_BUFFER_VIEW m_VertexBufferView;
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_ConstantBuffer;
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_Texture;
+	std::shared_ptr<DX12PixelStorage> m_myTexture;
 	std::shared_ptr<DX12Buffer> m_DX12VertexBuffer;
 	std::shared_ptr<DX12Buffer> m_SponzaVertexBuffer;
 	uint32_t m_SponzaVertexCount;
