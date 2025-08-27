@@ -5,8 +5,9 @@
 #include "fast_obj.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
-#include "DX12DeviceManager.h"
 #include <format>
+
+import DX12DeviceManager;
 
 Application::~Application()
 {

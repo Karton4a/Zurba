@@ -9,10 +9,15 @@
 
 #include <vector>
 #include <memory>
-#include "DX12Buffer.h"
-#include "Input.h"
-#include "Camera.h"
-#include "DX12PixelStorage.h"
+//#include "DX12Buffer.h"
+//#include "Input.h"
+//#include "Camera.h"
+//#include "DX12PixelStorage.h"
+
+import Camera;
+import Input;
+import DX12Buffer;
+import DX12PixelStorage;
 
 class Application
 {
