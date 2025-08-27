@@ -1,4 +1,5 @@
-#pragma once
+module;
+
 #include <wtypes.h>
 #include <exception>
 #include <wrl.h>
@@ -10,24 +11,27 @@
 #include <vector>
 #include <memory>
 
+export module Application;
+
 import Camera;
 import Input;
 import DX12Buffer;
 import DX12PixelStorage;
 
-class Application
+export class Application
 {
 public:
 	Application(UINT32 width, UINT32 height)
-		:m_WindowHandler(0), 
+		:m_WindowHandler(0),
 		m_WindowSize(width, height),
-		m_FrameIndex(0), 
-		m_FenceValue(0), 
+		m_FrameIndex(0),
+		m_FenceValue(0),
 		m_FenceEvent(0),
 		m_RTVDescriptorSize(0),
 		m_VertexBufferView(),
-		m_Camera(DirectX::XMFLOAT3(0,100,0), 30, (float)width / height, 5000.0f, 0.01f)
-	{}
+		m_Camera(DirectX::XMFLOAT3(0, 100, 0), 30, (float)width / height, 5000.0f, 0.01f)
+	{
+	}
 	~Application();
 	void Init(HWND hwnd);
 	void Update(float dt);
@@ -46,12 +50,12 @@ private:
 	void WriteCommandList();
 	template <UINT MaxSubresources>
 	UINT64 UpdateSubresources(
-		ID3D12GraphicsCommandList* pCmdList, 
-		ID3D12Resource* pDestinationResource, 
+		ID3D12GraphicsCommandList* pCmdList,
+		ID3D12Resource* pDestinationResource,
 		ID3D12Resource* pIntermediate,
-		UINT64 IntermediateOffset, 
-		UINT FirstSubresource, 
-		UINT NumSubresources, 
+		UINT64 IntermediateOffset,
+		UINT FirstSubresource,
+		UINT NumSubresources,
 		const D3D12_SUBRESOURCE_DATA* pSrcData) noexcept;
 
 	UINT64 UpdateSubresources(

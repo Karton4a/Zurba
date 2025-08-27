@@ -1,4 +1,5 @@
-#include "Application.h"
+//#include "Application.h"
+module;
 #include "DXHelpers.h"
 #include "d3dcompiler.h"
 #define FAST_OBJ_IMPLEMENTATION
@@ -6,6 +7,19 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include <format>
+
+#include <wtypes.h>
+#include <exception>
+#include <wrl.h>
+#include <d3d12.h>
+#include <dxgi1_6.h>
+#include <array>
+#include <directxmath.h>
+
+#include <vector>
+#include <memory>
+
+module Application;
 
 import DX12DeviceManager;
 

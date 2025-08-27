@@ -7,10 +7,12 @@
 #include <wrl.h>
 #include <d3d12.h>
 #include <dxgi1_6.h>
-#include "Application.h"
+//#include "Application.h"
 #include <chrono>
 #include <sstream>
 #include "DXHelpers.h"
+
+import Application;
 
 static bool isRunning = true;
 
