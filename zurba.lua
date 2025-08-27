@@ -1,3 +1,4 @@
+require "external/premake-ecc/ecc"
 
 PROJECT_NAME = "Zurba" 
 
