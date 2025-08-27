@@ -1,6 +1,5 @@
 module;
 #include <basetsd.h>
-#include <cstring>
 #include <directxmath.h>
 export module Input;
 
@@ -14,40 +13,17 @@ public:
 		MiddleKey,
 		MouseKeyCount,
 	};
-	Input()
-		:m_MousePosition(0, 0),
-		m_PreviousMousePosition(0, 0)
-	{
-		memset(m_InputTable, false, 256);
-		memset(m_MouseTable, false, (size_t)MouseKey::MouseKeyCount);
-	}
-	void Update() {};
-	void RegisterKeyUp(UINT8 key)
-	{
-		m_InputTable[key] = false;
-	}
-	void RegisterKeyDown(UINT8 key)
-	{
-		m_InputTable[key] = true;
-	}
+	Input();
+	void Update();
+	void RegisterKeyUp(UINT8 key);
+	void RegisterKeyDown(UINT8 key);
 
-	void RegisterMouseDown(MouseKey key)
-	{
-		assert(key < MouseKey::MouseKeyCount);
-		m_MouseTable[(uint8_t)key] = true;
-	}
+	void RegisterMouseDown(MouseKey key);
 
-	void RegisterMouseUp(MouseKey key)
-	{
-		assert(key < MouseKey::MouseKeyCount);
-		m_MouseTable[(uint8_t)key] = false;
-	}
+	void RegisterMouseUp(MouseKey key);
 
-	void SetMousePosition(uint32_t x, uint32_t y)
-	{
-		m_PreviousMousePosition = m_MousePosition;
-		m_MousePosition = { x, y };
-	}
+	void SetMousePosition(uint32_t x, uint32_t y);
+
 	inline bool IsKeyPressed(UINT8 key) const { return m_InputTable[key]; };
 	inline bool IsMouseKeyPressed(MouseKey key) const { return m_MouseTable[(uint8_t)key]; };
 	inline DirectX::XMUINT2 GetMousePosition() const { return m_MousePosition; };

@@ -9,10 +9,6 @@
 
 #include <vector>
 #include <memory>
-//#include "DX12Buffer.h"
-//#include "Input.h"
-//#include "Camera.h"
-//#include "DX12PixelStorage.h"
 
 import Camera;
 import Input;
