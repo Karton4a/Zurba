@@ -17,6 +17,7 @@ import Camera;
 import Input;
 import DX12Buffer;
 import DX12PixelStorage;
+import DXCShaderCompiler;
 
 export class Application
 {
@@ -29,7 +30,8 @@ public:
 		m_FenceEvent(0),
 		m_RTVDescriptorSize(0),
 		m_VertexBufferView(),
-		m_Camera(DirectX::XMFLOAT3(0, 100, 0), 30, (float)width / height, 5000.0f, 0.01f)
+		m_Camera(DirectX::XMFLOAT3(0, 100, 0), 30, (float)width / height, 5000.0f, 0.01f),
+		m_DxcComp()
 	{
 	}
 	~Application();
@@ -110,6 +112,8 @@ private:
 	std::shared_ptr<DX12Buffer> m_SponzaVertexBuffer;
 	uint32_t m_SponzaVertexCount;
 	D3D12_VERTEX_BUFFER_VIEW m_SponzaView;
+	std::vector<D3D12_VERTEX_BUFFER_VIEW> m_VertexBufferViews;
+	DXCShaderCompiler m_DxcComp;
 	Constants m_CBData;
 	UINT8* m_pCbvDataBegin;
 	UINT m_RTVDescriptorSize;

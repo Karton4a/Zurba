@@ -1,4 +1,3 @@
-//#include "Application.h"
 module;
 #include "DXHelpers.h"
 #include "d3dcompiler.h"
@@ -18,6 +17,7 @@ module;
 
 #include <vector>
 #include <memory>
+#include <set>
 
 module Application;
 
@@ -428,6 +428,35 @@ void Application::LoadAssets()
 #else
         UINT compileFlags = 0;
 #endif
+        DXCArgs vertexArgs = {
+            .EntryPoint = L"VSMain",
+            .Type = DX12Shader::Vertex,
+            .MajorVersion = 6,
+            .MinorVersion = 0,
+            .Debug = false,
+        };
+
+        std::shared_ptr<ShaderCompilerResult> vertexShaderRes = m_DxcComp.Compile(L"./data/shaders.hlsl", vertexArgs);
+
+        if (vertexShaderRes->HasError())
+        {
+            OutputDebugStringA(vertexShaderRes->GetError().c_str());
+        }
+
+        DXCArgs pixelArgs = {
+            .EntryPoint = L"PSMain",
+            .Type = DX12Shader::Pixel,
+            .MajorVersion = 6,
+            .MinorVersion = 0,
+            .Debug = false,
+        };
+
+        std::shared_ptr<ShaderCompilerResult> pixelShaderRes = m_DxcComp.Compile(L"./data/shaders.hlsl", pixelArgs);
+
+        if (pixelShaderRes->HasError())
+        {
+            OutputDebugStringA(pixelShaderRes->GetError().c_str());
+        }
 
         (D3DCompileFromFile(L"./data/shaders.hlsl", nullptr, nullptr, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, &shaderError));
         if (shaderError != nullptr)
@@ -450,12 +479,12 @@ void Application::LoadAssets()
             { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
         };
         D3D12_SHADER_BYTECODE vertexByteCode;
-        vertexByteCode.pShaderBytecode = vertexShader->GetBufferPointer();
-        vertexByteCode.BytecodeLength = vertexShader->GetBufferSize();
+        vertexByteCode.pShaderBytecode = vertexShaderRes->GetBuffer();
+        vertexByteCode.BytecodeLength = vertexShaderRes->GetBufferSize();
 
         D3D12_SHADER_BYTECODE pixelByteCode;
-        pixelByteCode.pShaderBytecode = pixelShader->GetBufferPointer();
-        pixelByteCode.BytecodeLength = pixelShader->GetBufferSize();
+        pixelByteCode.pShaderBytecode = pixelShaderRes->GetBuffer();
+        pixelByteCode.BytecodeLength = pixelShaderRes->GetBufferSize();
 
         D3D12_RASTERIZER_DESC rasterizerDesc {};
         rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
@@ -542,14 +571,72 @@ void Application::LoadAssets()
             }
             readIndexes += vertexsPerFace;
         }
+        size_t faceCount = 0;
+        struct SubMesh
+        {
+            uint32_t FaceOffset = 0;
+            uint32_t FaceCount = 0;
+            uint32_t MaterialIndex = 0;
+        };
+        struct Mesh
+        {
+            std::vector<SubMesh> SubMeshes;
+        };
+
+        std::vector<Mesh> meshes;
+        meshes.reserve(mesh->object_count);
+        for (size_t i = 0; i < mesh->object_count; i++)
+        {
+            fastObjGroup& object = mesh->objects[i];
+
+            uint32_t currentMaterialIndex = mesh->face_materials[object.face_offset];
+            SubMesh currentSubMesh = {
+
+                .FaceOffset = object.face_offset,
+                .MaterialIndex = currentMaterialIndex,
+            };
+            meshes.push_back({});
+            Mesh& currentMesh = meshes.back();
+
+            for (size_t j = 0; j < object.face_count; j++)
+            {
+                uint32_t materialIndex = mesh->face_materials[object.face_offset + j];
+                currentSubMesh.FaceCount++;
+
+                if (materialIndex != currentSubMesh.MaterialIndex)
+                {
+                    currentMesh.SubMeshes.push_back(currentSubMesh);
+                    currentSubMesh.MaterialIndex = materialIndex;
+                    currentSubMesh.FaceOffset = object.face_offset + j;
+                    currentSubMesh.FaceCount = 0;
+                }
+            }
+
+            currentMesh.SubMeshes.push_back(currentSubMesh);
+        }
+        assert(mesh->face_count == vertices.size() / 3);
+
+
         m_SponzaVertexBuffer = std::make_shared<DX12Buffer>(vertices.data(), vertices.size() * sizeof(Vertex));
         m_SponzaVertexBuffer->Flush(m_CommandList.Get());
+        for (auto& mesh : meshes)
+        {
+            for (auto& subMeshes : mesh.SubMeshes)
+            {
+                D3D12_VERTEX_BUFFER_VIEW view;
+                view.BufferLocation = m_SponzaVertexBuffer->GetGPUAddress() + subMeshes.FaceOffset * 3 * sizeof(Vertex);
+                view.StrideInBytes = sizeof(Vertex);
+                view.SizeInBytes = subMeshes.FaceCount * 3 * sizeof(Vertex);
+                m_VertexBufferViews.push_back(view);
+            }
 
-
+        }
 
         m_SponzaView.BufferLocation = m_SponzaVertexBuffer->GetGPUAddress();
         m_SponzaView.StrideInBytes = sizeof(Vertex);
         m_SponzaView.SizeInBytes = vertices.size() * sizeof(Vertex);
+
+        //FormatOutputDebugA("VERTEX SIZE OF = {}", sizeof(Vertex));
         m_SponzaVertexCount = vertices.size();
 
 
@@ -877,8 +964,14 @@ void Application::WriteCommandList()
     m_CommandList->ClearDepthStencilView(dsHandle, D3D12_CLEAR_FLAG_DEPTH ,0.0f,0,0,NULL);
     
     m_CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    m_CommandList->IASetVertexBuffers(0, 1, &m_SponzaView);
-    m_CommandList->DrawInstanced(m_SponzaVertexCount, 1, 0, 0);
+
+    for (size_t i = 0; i < m_VertexBufferViews.size(); i++)
+    {
+        m_CommandList->IASetVertexBuffers(0, 1, m_VertexBufferViews.data() + i);
+        m_CommandList->DrawInstanced(m_VertexBufferViews[i].SizeInBytes / 32, 1, 0, 0);
+    }
+    /*m_CommandList->IASetVertexBuffers(0, 1, &m_SponzaView);
+    m_CommandList->DrawInstanced(m_SponzaVertexCount, 1, 0, 0);*/
 
     // Indicate that the back buffer will now be used to present.
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;

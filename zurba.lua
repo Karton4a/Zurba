@@ -1,6 +1,6 @@
 require "external/premake-ecc/ecc"
 
-PROJECT_NAME = "Zurba" 
+PROJECT_NAME = "Zurba"
 
 workspace(PROJECT_NAME)
    configurations { "Debug", "Release" }
@@ -16,11 +16,11 @@ project(PROJECT_NAME)
    targetdir "bin/%{cfg.buildcfg}"
    cppdialect "C++20"
 
-   postbuildcommands { '{DELETE} %{cfg.targetdir}\\data & {COPYDIR} data %{cfg.targetdir}\\data' }
+   postbuildcommands { '{DELETE} %{cfg.targetdir}\\data & {COPYDIR} data %{cfg.targetdir}\\data & {COPYFILE} external\\dxc\\bin\\x64\\dxcompiler.dll %{cfg.targetdir}' }
 
-   includedirs { "external" }
+   includedirs { "external", "external/dxc/inc" }
 
-   links {"d3d12.lib", "dxgi.lib", "d3dcompiler.lib"}
+   links {"d3d12.lib", "dxgi.lib", "d3dcompiler.lib", "external/dxc/lib/x64/dxcompiler.lib"}
 
    files { "src/**.h", "src/**.cpp", "src/**.ixx", "external/**.h" }
    
