@@ -34,15 +34,28 @@ private:
 class DXCShaderCompilerResult : public ShaderCompilerResult
 {
 public:
-	DXCShaderCompilerResult(Microsoft::WRL::ComPtr<IDxcBlob>& blob)
+	DXCShaderCompilerResult(Microsoft::WRL::ComPtr<IDxcBlob>& aBlob)
 		:ShaderCompilerResult(),
-		m_Blob(blob)
+		m_Blob(aBlob),
+		m_PdbName(),
+		m_PdbBlob(nullptr)
 	{}
+
+	DXCShaderCompilerResult(Microsoft::WRL::ComPtr<IDxcBlob>& aBlob,
+		LPCWSTR aPdbName,
+		Microsoft::WRL::ComPtr<IDxcBlob>& aPdbBlob)
+		:ShaderCompilerResult(),
+		m_Blob(aBlob),
+		m_PdbName(aPdbName),
+		m_PdbBlob(aPdbBlob)
+	{
+	}
 
 	DXCShaderCompilerResult(const std::string&& aError)
 		:ShaderCompilerResult(std::move(aError)),
 		m_Blob(nullptr)
 	{}
+
 	void* GetBuffer() override
 	{
 		return m_Blob->GetBufferPointer();
@@ -51,6 +64,22 @@ public:
 	{
 		return m_Blob->GetBufferSize();
 	}
+
+	void* GetPdbBuffer() override
+	{
+		return m_PdbBlob->GetBufferPointer();
+	}
+	size_t GetPdbBufferSize() override
+	{
+		return m_PdbBlob->GetBufferSize();
+	}
+	const std::wstring& GetPdbName() const override
+	{
+		return m_PdbName;
+	}
+
 private:
 	Microsoft::WRL::ComPtr<IDxcBlob> m_Blob;
+	std::wstring m_PdbName;
+	Microsoft::WRL::ComPtr<IDxcBlob> m_PdbBlob;
 };

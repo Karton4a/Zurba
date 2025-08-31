@@ -76,6 +76,16 @@ DXCShaderCompiler::CompilationResult DXCShaderCompiler::Compile(std::filesystem:
 
 	Microsoft::WRL::ComPtr<IDxcBlob> shaderBlob;
 	result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shaderBlob), nullptr);
+
+
+	if (aDxcArgs.Debug)
+	{
+		Microsoft::WRL::ComPtr<IDxcBlob> pPDB;
+		Microsoft::WRL::ComPtr<IDxcBlobUtf16> pPDBName;
+		result->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(&pPDB), &pPDBName);
+		return std::make_shared<DXCShaderCompilerResult>(shaderBlob, pPDBName->GetStringPointer(), pPDB);
+	}
+
 	return std::make_shared<DXCShaderCompilerResult>(shaderBlob);
 }
 

@@ -18,7 +18,8 @@ module;
 #include <vector>
 #include <memory>
 #include <set>
-
+#include <fstream>
+#include <filesystem>
 module Application;
 
 import DX12DeviceManager;
@@ -433,7 +434,7 @@ void Application::LoadAssets()
             .Type = DX12Shader::Vertex,
             .MajorVersion = 6,
             .MinorVersion = 0,
-            .Debug = false,
+            .Debug = _DEBUG,
         };
 
         std::shared_ptr<ShaderCompilerResult> vertexShaderRes = m_DxcComp.Compile(L"./data/shaders.hlsl", vertexArgs);
@@ -443,15 +444,29 @@ void Application::LoadAssets()
             OutputDebugStringA(vertexShaderRes->GetError().c_str());
         }
 
+        std::filesystem::create_directory("pdbs");
+        std::wstring path = std::format(L"pdbs/{}", vertexShaderRes->GetPdbName());
+        std::ofstream file(path, std::ios::binary | std::ios::trunc);
+
+        file.write((const char*) vertexShaderRes->GetPdbBuffer(), vertexShaderRes->GetPdbBufferSize());
+
+        file.close();
+
         DXCArgs pixelArgs = {
             .EntryPoint = L"PSMain",
             .Type = DX12Shader::Pixel,
             .MajorVersion = 6,
             .MinorVersion = 0,
-            .Debug = false,
+            .Debug = _DEBUG,
         };
 
         std::shared_ptr<ShaderCompilerResult> pixelShaderRes = m_DxcComp.Compile(L"./data/shaders.hlsl", pixelArgs);
+
+        path = std::format(L"pdbs/{}", pixelShaderRes->GetPdbName());
+        file.open(path, std::ios::binary | std::ios::trunc);
+
+        file.write((const char*)pixelShaderRes->GetPdbBuffer(), pixelShaderRes->GetPdbBufferSize());
+        file.close();
 
         if (pixelShaderRes->HasError())
         {

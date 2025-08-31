@@ -15,6 +15,9 @@ public:
 
 	virtual void* GetBuffer() = 0;
 	virtual size_t GetBufferSize() = 0;
+	virtual void* GetPdbBuffer() = 0;
+	virtual size_t GetPdbBufferSize() = 0;
+	virtual const std::wstring& GetPdbName() const = 0;
 protected:
 	std::string m_ErrorMessage = "";
 	bool m_HasError = false;
