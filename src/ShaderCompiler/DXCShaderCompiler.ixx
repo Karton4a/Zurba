@@ -51,7 +51,7 @@ public:
 	{
 	}
 
-	DXCShaderCompilerResult(const std::string&& aError)
+	DXCShaderCompilerResult(std::string&& aError)
 		:ShaderCompilerResult(std::move(aError)),
 		m_Blob(nullptr)
 	{}

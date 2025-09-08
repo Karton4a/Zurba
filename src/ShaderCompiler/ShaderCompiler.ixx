@@ -1,14 +1,18 @@
 module;
 #include <cstdint>
 #include <string>
+#include "../DXHelpers.h"
 export module ShaderCompiler;
 
 export class ShaderCompilerResult
 {
 public:
 	ShaderCompilerResult() = default;
-	ShaderCompilerResult(const std::string&& aError)
-		:m_ErrorMessage(aError), m_HasError(true){ }
+	ShaderCompilerResult(std::string&& aError)
+		:m_ErrorMessage(aError), m_HasError(true) {}
+
+	ShaderCompilerResult(const std::string& aError)
+		:m_ErrorMessage(aError), m_HasError(true) {}
 
 	bool HasError() const { return m_HasError; }
 	const std::string& GetError() const { return m_ErrorMessage; }

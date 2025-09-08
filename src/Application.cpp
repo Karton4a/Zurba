@@ -211,7 +211,7 @@ void Application::LoadPipeline()
             dxgiAdapterDesc1.DedicatedVideoMemory > maxDedicatedVideoMemory)
         {
             maxDedicatedVideoMemory = dxgiAdapterDesc1.DedicatedVideoMemory;
-            FormatOutputDebug(L"{}\n", dxgiAdapterDesc1.Description);
+            DLog(L"{}\n", dxgiAdapterDesc1.Description);
             ThrowIfFailed(dxgiAdapter1.As(&dxgiAdapter4));
         }
     }
@@ -477,14 +477,14 @@ void Application::LoadAssets()
         if (shaderError != nullptr)
         {
             //static_cast<const char*>(shaderError->GetBufferPointer())
-            FormatOutputDebugA("Vertex shader error: {}", static_cast<const char*>(shaderError->GetBufferPointer()));
+            DLog("Vertex shader error: {}", static_cast<const char*>(shaderError->GetBufferPointer()));
         }
 
         (D3DCompileFromFile(L"./data/shaders.hlsl", nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, &shaderError));
         if (shaderError != nullptr)
         {
             //static_cast<const char*>(shaderError->GetBufferPointer())
-            FormatOutputDebugA("Pixel shader error: {}", static_cast<const char*>(shaderError->GetBufferPointer()));
+            DLog("Pixel shader error: {}", static_cast<const char*>(shaderError->GetBufferPointer()));
         }
         // Define the vertex input layout.
         D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
@@ -651,7 +651,7 @@ void Application::LoadAssets()
         m_SponzaView.StrideInBytes = sizeof(Vertex);
         m_SponzaView.SizeInBytes = vertices.size() * sizeof(Vertex);
 
-        //FormatOutputDebugA("VERTEX SIZE OF = {}", sizeof(Vertex));
+        //DLog("VERTEX SIZE OF = {}", sizeof(Vertex));
         m_SponzaVertexCount = vertices.size();
 
 

@@ -401,3 +401,5 @@ FodyWeavers.xsd
 *.filters
 
 pdbs/
+
+*.org
