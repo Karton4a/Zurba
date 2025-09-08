@@ -23,6 +23,7 @@ module;
 module Application;
 
 import DX12DeviceManager;
+import CompitmeConstants;
 
 Application::~Application()
 {
@@ -423,18 +424,18 @@ void Application::LoadAssets()
 
         Microsoft::WRL::ComPtr<ID3DBlob> shaderError;
 
-#if defined(_DEBUG)
-        // Enable better shader debugging with the graphics debugging tools.
-        UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#else
         UINT compileFlags = 0;
-#endif
+        if constexpr (_Debug)
+        {
+            compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+        }
+
         DXCArgs vertexArgs = {
             .EntryPoint = L"VSMain",
             .Type = DX12Shader::Vertex,
             .MajorVersion = 6,
             .MinorVersion = 0,
-            .Debug = _DEBUG,
+            .Debug = _Debug,
         };
 
         std::shared_ptr<ShaderCompilerResult> vertexShaderRes = m_DxcComp.Compile(L"./data/shaders.hlsl", vertexArgs);
@@ -445,28 +446,29 @@ void Application::LoadAssets()
         }
 
         std::filesystem::create_directory("pdbs");
-        std::wstring path = std::format(L"pdbs/{}", vertexShaderRes->GetPdbName());
-        std::ofstream file(path, std::ios::binary | std::ios::trunc);
+        if constexpr (_Debug)
+        {
+            std::wstring path = std::format(L"pdbs/{}", vertexShaderRes->GetPdbName());
+            std::ofstream file(path, std::ios::binary | std::ios::trunc);
+            file.write((const char*) vertexShaderRes->GetPdbBuffer(), vertexShaderRes->GetPdbBufferSize());
+        }
 
-        file.write((const char*) vertexShaderRes->GetPdbBuffer(), vertexShaderRes->GetPdbBufferSize());
-
-        file.close();
 
         DXCArgs pixelArgs = {
             .EntryPoint = L"PSMain",
             .Type = DX12Shader::Pixel,
             .MajorVersion = 6,
             .MinorVersion = 0,
-            .Debug = _DEBUG,
+            .Debug = _Debug,
         };
 
         std::shared_ptr<ShaderCompilerResult> pixelShaderRes = m_DxcComp.Compile(L"./data/shaders.hlsl", pixelArgs);
-
-        path = std::format(L"pdbs/{}", pixelShaderRes->GetPdbName());
-        file.open(path, std::ios::binary | std::ios::trunc);
-
-        file.write((const char*)pixelShaderRes->GetPdbBuffer(), pixelShaderRes->GetPdbBufferSize());
-        file.close();
+        if constexpr (_Debug)
+        {
+            std::wstring path = std::format(L"pdbs/{}", pixelShaderRes->GetPdbName());
+            std::ofstream file(path, std::ios::binary | std::ios::trunc);
+            file.write((const char*)pixelShaderRes->GetPdbBuffer(), pixelShaderRes->GetPdbBufferSize());
+        }
 
         if (pixelShaderRes->HasError())
         {

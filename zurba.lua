@@ -26,9 +26,18 @@ project(PROJECT_NAME)
    
 
    filter { "configurations:Debug" }
-      defines { "_DEBUG" }
+      defines
+      {
+         "_DEBUG",
+         "_ZURBA_DEBUG=1",
+         "_ZURBA_RELEASE=0"
+      }
       symbols "On"
 
    filter { "configurations:Release" }
-      defines { "_RELEASE" }
+      defines { 
+         "_RELEASE",
+         "_ZURBA_DEBUG=0",
+         "_ZURBA_RELEASE=1"
+      }
       optimize "On"
