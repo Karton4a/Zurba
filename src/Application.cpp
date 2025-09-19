@@ -305,59 +305,109 @@ void Application::LoadPipeline()
     m_FrameIndex = m_SwapChain->GetCurrentBackBufferIndex();
 
     {
-        D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-        rtvHeapDesc.NumDescriptors = m_RenderTargets.size();
-        rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-        rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-        ThrowIfFailed(m_Device->CreateDescriptorHeap(
-            &rtvHeapDesc, IID_PPV_ARGS(&m_RTVHeap)));
-
-        m_RTVDescriptorSize = m_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-
+		DX12DeviceManager::GetInstance()->SetRenderTargetDescriptorHeap(std::make_unique<DX12DescriptorHeap>(DescriptorHeapType::RTV, 1024));
     }
-
-    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_RTVHeap->GetCPUDescriptorHandleForHeapStart());
-
     // Create a RTV for each frame.
     for (UINT n = 0; n < m_RenderTargets.size(); n++)
     {
         ThrowIfFailed(m_SwapChain->GetBuffer(n, IID_PPV_ARGS(&m_RenderTargets[n])));
-        m_Device->CreateRenderTargetView(m_RenderTargets[n].Get(), nullptr, rtvHandle);
-        rtvHandle.ptr += (1 * m_RTVDescriptorSize);
 
+		m_RenderTargetViews[n] = std::make_shared<DX12RenderTargetView>(m_RenderTargets[n].Get());
     }
-    {
-        D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc = {};
-        cbvHeapDesc.NumDescriptors = 2;
-        cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-        cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-        ThrowIfFailed(m_Device->CreateDescriptorHeap(
-            &cbvHeapDesc, IID_PPV_ARGS(&m_CBVHeap)));
-
-    }
-
-    {
-        D3D12_DESCRIPTOR_HEAP_DESC samplerHeapDesc = {};
-        samplerHeapDesc.NumDescriptors = 1;
-        samplerHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-        samplerHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-        ThrowIfFailed(m_Device->CreateDescriptorHeap(
-            &samplerHeapDesc, IID_PPV_ARGS(&m_SamplerHeap)));
-
-    }
-    {
-        D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
-        dsvHeapDesc.NumDescriptors = 1;
-        dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-        dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-        ThrowIfFailed(m_Device->CreateDescriptorHeap(
-            &dsvHeapDesc, IID_PPV_ARGS(&m_DSVHeap)));
-    }
+    DX12DeviceManager::GetInstance()->SetShaderVisibleDescriptorHeap(std::make_unique<DX12DescriptorHeap>(DescriptorHeapType::CBV_SRV_UAV, 1024));
+    DX12DeviceManager::GetInstance()->SetDepthStencilDescriptorHeap(std::make_unique<DX12DescriptorHeap>(DescriptorHeapType::DSV, 5));
 }
 
 void Application::LoadAssets()
 {
     
+
+    // Create the constant buffer.
+    {
+        const UINT constantBufferSize = sizeof(Constants);    // CB size is required to be 256-byte aligned.
+
+        D3D12_HEAP_PROPERTIES heapProps;
+        heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+        heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+        heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+        heapProps.CreationNodeMask = 1;
+        heapProps.VisibleNodeMask = 1;
+
+
+        D3D12_RESOURCE_DESC constantBufferResourceDesc;
+        constantBufferResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        constantBufferResourceDesc.Alignment = 0;
+        constantBufferResourceDesc.Width = constantBufferSize;
+        constantBufferResourceDesc.Height = 1;
+        constantBufferResourceDesc.DepthOrArraySize = 1;
+        constantBufferResourceDesc.MipLevels = 1;
+        constantBufferResourceDesc.Format = DXGI_FORMAT_UNKNOWN;
+        constantBufferResourceDesc.SampleDesc.Count = 1;
+        constantBufferResourceDesc.SampleDesc.Quality = 0;
+        constantBufferResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        constantBufferResourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+        ThrowIfFailed(m_Device->CreateCommittedResource(
+            &heapProps,
+            D3D12_HEAP_FLAG_NONE,
+            &constantBufferResourceDesc,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            nullptr,
+            IID_PPV_ARGS(&m_ConstantBuffer)));
+
+
+        m_ConstantBufferView = std::make_shared<DX12ConstantBufferView>(m_ConstantBuffer->GetGPUVirtualAddress(), constantBufferSize);
+
+        // Map and initialize the constant buffer. We don't unmap this until the
+        // app closes. Keeping things mapped for the lifetime of the resource is okay.
+
+        D3D12_RANGE readRange;        // We do not intend to read from this resource on the CPU.
+        readRange.Begin = 0;
+        readRange.End = 0;
+
+        ThrowIfFailed(m_ConstantBuffer->Map(0, &readRange, reinterpret_cast<void**>(&m_pCbvDataBegin)));
+        memcpy(m_pCbvDataBegin, &m_CBData, sizeof(m_CBData));
+    }
+    // Create the texture.
+    {
+        int x, y, n;
+        stbi_uc* data = stbi_load("./data/images/Flag.png", &x, &y, &n, 0);
+        /*for (size_t i = 0; i < x*y*n; i++)
+        {
+            stbi_uc value = data[i];
+            OutputDebugString(value == 0 ? L"1" : L"0");
+        }*/
+        m_myTexture = std::make_shared<DX12PixelStorage>(D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+            DXGI_FORMAT_R8G8B8A8_UNORM,
+            x,
+            y,
+            1);
+
+        m_myTexture->LoadData(data, n * sizeof(stbi_uc));
+
+        m_myTexture->Flush(m_CommandList.Get());
+
+        stbi_image_free(data);
+
+
+        D3D12_RESOURCE_BARRIER barrier;
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        barrier.Transition.pResource = m_myTexture->GetResource();
+        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+
+        m_CommandList->ResourceBarrier(1, &barrier);
+
+        // Describe and create a SRV for the texture.
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+        srvDesc.Texture2D.MipLevels = 1;
+
+
+        m_myTextureView = std::make_shared<DX12ShaderResourceView>(m_myTexture, D3D12_SRV_DIMENSION_TEXTURE2D, srvDesc);
+    }
+
     {
         D3D12_ROOT_SIGNATURE_DESC  rootSignatureDesc;
         rootSignatureDesc.NumParameters = 1;
@@ -371,7 +421,7 @@ void Application::LoadAssets()
         range.NumDescriptors = 1;
         range.BaseShaderRegister = 0;
         range.RegisterSpace = 0;
-        range.OffsetInDescriptorsFromTableStart = 0;
+        range.OffsetInDescriptorsFromTableStart = m_ConstantBufferView->GetDescriptorIndex();
 
 
         D3D12_DESCRIPTOR_RANGE rangeTexture;
@@ -379,7 +429,7 @@ void Application::LoadAssets()
         rangeTexture.NumDescriptors = 1;
         rangeTexture.BaseShaderRegister = 0;
         rangeTexture.RegisterSpace = 0;
-        rangeTexture.OffsetInDescriptorsFromTableStart = 1;
+        rangeTexture.OffsetInDescriptorsFromTableStart = m_myTextureView->GetDescriptorIndex();
 
         D3D12_DESCRIPTOR_RANGE ranges[] = { range, rangeTexture };
 
@@ -726,108 +776,6 @@ void Application::LoadAssets()
 
         m_DX12VertexBuffer->Flush(m_CommandList.Get());
     }
-
-    // Create the constant buffer.
-    {
-        const UINT constantBufferSize = sizeof(Constants);    // CB size is required to be 256-byte aligned.
-
-        D3D12_HEAP_PROPERTIES heapProps;
-        heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
-        heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-        heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-        heapProps.CreationNodeMask = 1;
-        heapProps.VisibleNodeMask = 1;
-
-
-        D3D12_RESOURCE_DESC constantBufferResourceDesc;
-        constantBufferResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        constantBufferResourceDesc.Alignment = 0;
-        constantBufferResourceDesc.Width = constantBufferSize;
-        constantBufferResourceDesc.Height = 1;
-        constantBufferResourceDesc.DepthOrArraySize = 1;
-        constantBufferResourceDesc.MipLevels = 1;
-        constantBufferResourceDesc.Format = DXGI_FORMAT_UNKNOWN;
-        constantBufferResourceDesc.SampleDesc.Count = 1;
-        constantBufferResourceDesc.SampleDesc.Quality = 0;
-        constantBufferResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-        constantBufferResourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-
-        ThrowIfFailed(m_Device->CreateCommittedResource(
-            &heapProps,
-            D3D12_HEAP_FLAG_NONE,
-            &constantBufferResourceDesc,
-            D3D12_RESOURCE_STATE_GENERIC_READ,
-            nullptr,
-            IID_PPV_ARGS(&m_ConstantBuffer)));
-
-        // Describe and create a constant buffer view.
-        D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
-        cbvDesc.BufferLocation = m_ConstantBuffer->GetGPUVirtualAddress();
-        cbvDesc.SizeInBytes = constantBufferSize;
-
-        D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle(m_CBVHeap->GetCPUDescriptorHandleForHeapStart());
-        m_Device->CreateConstantBufferView(&cbvDesc, cbvHandle);
-
-        // Map and initialize the constant buffer. We don't unmap this until the
-        // app closes. Keeping things mapped for the lifetime of the resource is okay.
-
-        D3D12_RANGE readRange;        // We do not intend to read from this resource on the CPU.
-        readRange.Begin = 0;
-        readRange.End = 0;
-
-        ThrowIfFailed(m_ConstantBuffer->Map(0, &readRange, reinterpret_cast<void**>(&m_pCbvDataBegin)));
-        memcpy(m_pCbvDataBegin, &m_CBData, sizeof(m_CBData));
-    }
-    
-    Microsoft::WRL::ComPtr<ID3D12Resource> textureUploadHeap;
-
-    // Create the texture.
-    {
-        int x, y, n;
-        stbi_uc* data = stbi_load("./data/images/Flag.png", &x, &y, &n, 0);
-        /*for (size_t i = 0; i < x*y*n; i++)
-        {
-            stbi_uc value = data[i];
-            OutputDebugString(value == 0 ? L"1" : L"0");
-        }*/
-        m_myTexture = std::make_shared<DX12PixelStorage>(D3D12_RESOURCE_DIMENSION_TEXTURE2D,
-            DXGI_FORMAT_R8G8B8A8_UNORM,
-            x,
-            y,
-            1);
-
-        m_myTexture->LoadData(data, n * sizeof(stbi_uc));
-
-        m_myTexture->Flush(m_CommandList.Get());
-
-        stbi_image_free(data);
-
-
-        D3D12_RESOURCE_BARRIER barrier;
-        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-        barrier.Transition.pResource = m_myTexture->GetResource();
-        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-
-        m_CommandList->ResourceBarrier(1, &barrier);
-
-        // Describe and create a SRV for the texture.
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-        srvDesc.Texture2D.MipLevels = 1;
-
-        
-
-        D3D12_CPU_DESCRIPTOR_HANDLE handle(m_CBVHeap->GetCPUDescriptorHandleForHeapStart());
-        UINT descriptorRecordSize = m_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-        handle.ptr += descriptorRecordSize;
-
-        m_Device->CreateShaderResourceView(m_myTexture->GetResource(), &srvDesc, handle);
-    }
     //Create Depth Buffer
     {
         D3D12_RESOURCE_DESC textureDesc = {};
@@ -861,15 +809,8 @@ void Application::LoadAssets()
             &optimizedClearValue,
             IID_PPV_ARGS(&m_DepthStencilBuffer)));
 
-        D3D12_DEPTH_STENCIL_VIEW_DESC dsvView;
-        dsvView.Format = DXGI_FORMAT_D32_FLOAT;
-        dsvView.Flags = D3D12_DSV_FLAG_NONE;
-        dsvView.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-        dsvView.Texture2D.MipSlice = 0;
 
-        D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_DSVHeap->GetCPUDescriptorHandleForHeapStart());
-
-        m_Device->CreateDepthStencilView(m_DepthStencilBuffer.Get(), &dsvView, dsvHandle);
+		m_DepthStencilView = std::make_shared<DX12DepthStencilView>(m_DepthStencilBuffer.Get());
     }
 
     ThrowIfFailed(m_CommandList->Close());
@@ -950,11 +891,12 @@ void Application::WriteCommandList()
     m_CommandList->RSSetScissorRects(1, &scissorRect);
 
 
-
-    ID3D12DescriptorHeap* ppHeaps[] = { m_CBVHeap.Get()};
+    auto DX12DeviceMgr = DX12DeviceManager::GetInstance();
+    ID3D12DescriptorHeap* shaderVisibleDescriptorHeap = DX12DeviceMgr->GetShaderVisibleDescriptorHeap()->GetHeapResource();
+    ID3D12DescriptorHeap* ppHeaps[] = { shaderVisibleDescriptorHeap };
     m_CommandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 
-    m_CommandList->SetGraphicsRootDescriptorTable(0, m_CBVHeap->GetGPUDescriptorHandleForHeapStart());
+    m_CommandList->SetGraphicsRootDescriptorTable(0, shaderVisibleDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 
     // Indicate that the back buffer will be used as a render target.
     D3D12_RESOURCE_BARRIER barrier;
@@ -966,13 +908,10 @@ void Application::WriteCommandList()
     barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
     m_CommandList->ResourceBarrier(1, &barrier);
 
-    //CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_RtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIndex, m_RtvDescriptorSize);
-    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_RTVHeap->GetCPUDescriptorHandleForHeapStart());
+    D3D12_CPU_DESCRIPTOR_HANDLE dsHandle = m_DepthStencilView->GetHandle();
 
-    rtvHandle.ptr += m_FrameIndex * m_RTVDescriptorSize;
-
-    D3D12_CPU_DESCRIPTOR_HANDLE dsHandle(m_DSVHeap->GetCPUDescriptorHandleForHeapStart());
-
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_RenderTargetViews[m_FrameIndex]->GetHandle();
+    
     m_CommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsHandle);
 
     // Record commands.

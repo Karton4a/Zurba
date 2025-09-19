@@ -15,7 +15,7 @@ public:
     void LoadData(const uint8_t* data, uint32_t elementSize);
     void Flush(ID3D12GraphicsCommandList* pCmdList);
     ID3D12Resource* GetResource() { return m_GPUBuffer.Get(); };
-
+	DXGI_FORMAT GetFormat() const { return m_Description.Format; }
 private:
     void UpdateSubresources(std::vector<D3D12_SUBRESOURCE_DATA>& aSubresources);
 

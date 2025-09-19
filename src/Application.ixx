@@ -18,6 +18,11 @@ import Input;
 import DX12Buffer;
 import DX12PixelStorage;
 import DXCShaderCompiler;
+import DX12DescriptorHeap;
+import DX12ConstantBufferView;
+import DX12ShaderResourceView;
+import DX12RenderTargetView;
+import DX12DepthStencilView;
 
 export class Application
 {
@@ -95,11 +100,6 @@ private:
 	Microsoft::WRL::ComPtr<IDXGISwapChain3> m_SwapChain;
 	Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_CommandQueue;
 
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_RTVHeap;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_CBVHeap;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_SamplerHeap;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_DSVHeap;
-
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_CommandList;
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_RootSignature;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_PipelineState;
@@ -107,7 +107,11 @@ private:
 	D3D12_VERTEX_BUFFER_VIEW m_VertexBufferView;
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_ConstantBuffer;
+	std::shared_ptr<DX12ConstantBufferView> m_ConstantBufferView;
+
 	std::shared_ptr<DX12PixelStorage> m_myTexture;
+	std::shared_ptr<DX12ShaderResourceView> m_myTextureView;
+
 	std::shared_ptr<DX12Buffer> m_DX12VertexBuffer;
 	std::shared_ptr<DX12Buffer> m_SponzaVertexBuffer;
 	uint32_t m_SponzaVertexCount;
@@ -124,7 +128,9 @@ private:
 	UINT64 m_FenceValue;
 
 	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, 2> m_RenderTargets;
+	std::array<std::shared_ptr<DX12RenderTargetView>, 2> m_RenderTargetViews;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_DepthStencilBuffer;
+	std::shared_ptr<DX12DepthStencilView> m_DepthStencilView;
 	HWND m_WindowHandler;
 	DirectX::XMUINT2 m_WindowSize;
 	Camera m_Camera;
