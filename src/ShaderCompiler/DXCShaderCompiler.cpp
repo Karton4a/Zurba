@@ -3,7 +3,7 @@ module;
 #include <dxcapi.h>
 #include "../DXHelpers.h"
 #include <fstream>
-#include <vector>;
+#include <vector>
 module DXCShaderCompiler;
 
 DXCShaderCompiler::DXCShaderCompiler()
@@ -53,7 +53,7 @@ DXCShaderCompiler::CompilationResult DXCShaderCompiler::Compile(std::filesystem:
 	}
 
 	Microsoft::WRL::ComPtr<IDxcResult> result;
-	HRESULT hr = m_DxcCompiler->Compile(&sourceBuffer, args.data(), args.size(), m_IncludeHandler.Get(), IID_PPV_ARGS(&result));
+	HRESULT hr = m_DxcCompiler->Compile(&sourceBuffer, args.data(), static_cast<UINT32>(args.size()), m_IncludeHandler.Get(), IID_PPV_ARGS(&result));
 
 	if (FAILED(hr))
 	{

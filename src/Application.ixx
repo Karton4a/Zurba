@@ -23,6 +23,7 @@ import DX12ConstantBufferView;
 import DX12ShaderResourceView;
 import DX12RenderTargetView;
 import DX12DepthStencilView;
+import Types;
 
 export class Application
 {
@@ -114,7 +115,7 @@ private:
 
 	std::shared_ptr<DX12Buffer> m_DX12VertexBuffer;
 	std::shared_ptr<DX12Buffer> m_SponzaVertexBuffer;
-	uint32_t m_SponzaVertexCount;
+	u64 m_SponzaVertexCount;
 	D3D12_VERTEX_BUFFER_VIEW m_SponzaView;
 	std::vector<D3D12_VERTEX_BUFFER_VIEW> m_VertexBufferViews;
 	DXCShaderCompiler m_DxcComp;

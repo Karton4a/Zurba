@@ -23,11 +23,13 @@ project(PROJECT_NAME)
    links {"d3d12.lib", "dxgi.lib", "d3dcompiler.lib", "external/dxc/lib/x64/dxcompiler.lib"}
 
    files { "src/**.h", "src/**.cpp", "src/**.ixx", "external/**.h" }
+   flags { "FatalWarnings" }
    
 
    filter { "configurations:Debug" }
       defines
       {
+         "_CRT_SECURE_NO_WARNINGS",
          "_DEBUG",
          "_ZURBA_DEBUG=1",
          "_ZURBA_RELEASE=0"
@@ -35,7 +37,8 @@ project(PROJECT_NAME)
       symbols "On"
 
    filter { "configurations:Release" }
-      defines { 
+      defines {
+         "_CRT_SECURE_NO_WARNINGS",
          "_RELEASE",
          "_ZURBA_DEBUG=0",
          "_ZURBA_RELEASE=1"

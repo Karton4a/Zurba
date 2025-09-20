@@ -289,7 +289,7 @@ void Application::LoadPipeline()
 
 
     DXGI_SWAP_CHAIN_DESC1 swapchainDesc = {};
-    swapchainDesc.BufferCount = m_RenderTargets.size();
+    swapchainDesc.BufferCount = static_cast<UINT>(m_RenderTargets.size());
     swapchainDesc.Width = m_WindowSize.x;
     swapchainDesc.Height = m_WindowSize.y;
     swapchainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -674,7 +674,7 @@ void Application::LoadAssets()
                 {
                     currentMesh.SubMeshes.push_back(currentSubMesh);
                     currentSubMesh.MaterialIndex = materialIndex;
-                    currentSubMesh.FaceOffset = object.face_offset + j;
+                    currentSubMesh.FaceOffset = static_cast<uint32_t>(object.face_offset + j);
                     currentSubMesh.FaceCount = 0;
                 }
             }
@@ -701,7 +701,7 @@ void Application::LoadAssets()
 
         m_SponzaView.BufferLocation = m_SponzaVertexBuffer->GetGPUAddress();
         m_SponzaView.StrideInBytes = sizeof(Vertex);
-        m_SponzaView.SizeInBytes = vertices.size() * sizeof(Vertex);
+        m_SponzaView.SizeInBytes = static_cast<UINT>(vertices.size() * sizeof(Vertex));
 
         //DLog("VERTEX SIZE OF = {}", sizeof(Vertex));
         m_SponzaVertexCount = vertices.size();
@@ -877,8 +877,8 @@ void Application::WriteCommandList()
     D3D12_VIEWPORT viewport;
     viewport.TopLeftX = 0;
     viewport.TopLeftY = 0;
-    viewport.Height = m_WindowSize.y;
-    viewport.Width = m_WindowSize.x;
+    viewport.Height = static_cast<FLOAT>(m_WindowSize.y);
+    viewport.Width = static_cast<FLOAT>(m_WindowSize.x);
     viewport.MaxDepth = 5000.0f;
     viewport.MinDepth = 0.000001f;
     D3D12_RECT scissorRect;

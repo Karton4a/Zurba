@@ -18,7 +18,7 @@ DX12ShaderResourceView::DX12ShaderResourceView(std::shared_ptr<DX12PixelStorage>
     switch (aDimension)
     {
     case D3D12_SRV_DIMENSION_UNKNOWN:
-        assert(false, "WTF");
+        assert(false);
 		break;
     case D3D12_SRV_DIMENSION_BUFFER:
 		srvDesc.Buffer = aDesc.Buffer;
@@ -54,7 +54,7 @@ DX12ShaderResourceView::DX12ShaderResourceView(std::shared_ptr<DX12PixelStorage>
 		srvDesc.RaytracingAccelerationStructure = aDesc.RaytracingAccelerationStructure;
         break;
     default:
-        assert(false, "WTF");
+        assert(false);
         break;
     }
     Microsoft::WRL::ComPtr<ID3D12Device> device = DX12DeviceManager::GetInstance()->GetDevice();

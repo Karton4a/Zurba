@@ -48,7 +48,7 @@ uint32_t DX12DescriptorHeap::AllocateDescriptor()
 {
     if(m_FreeDescriptors.empty())
     {
-        assert(m_CurrentDescriptorTop < m_HeapSize, "No Free Descriptors");
+        assert(m_CurrentDescriptorTop < m_HeapSize); //"No Free Descriptors"
         return m_CurrentDescriptorTop++;
     }
     else
@@ -61,7 +61,7 @@ uint32_t DX12DescriptorHeap::AllocateDescriptor()
 
 void DX12DescriptorHeap::FreeDescriptor(uint32_t aDescriptorIndex)
 {
-    assert(aDescriptorIndex < m_HeapSize, "Invalid Descriptor Index");
+    assert(aDescriptorIndex < m_HeapSize); //"Invalid Descriptor Index"
 	m_FreeDescriptors.push_back(aDescriptorIndex);
 }
 
